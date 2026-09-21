@@ -1,0 +1,24 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <group>
+        <clip-path android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+        <path android:fillColor="#003399" android:pathData="M0,0h36v36h-36z" />
+        <!-- 12 Golden Stars in a Circle (R=10, center 18,18) -->
+        <path android:fillColor="#FFCC00" android:pathData="M18,8l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M23,9.3l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M26.7,13l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M28,18l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M26.7,23l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M23,26.7l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M18,28l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M13,26.7l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M9.3,23l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M8,18l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M9.3,13l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+        <path android:fillColor="#FFCC00" android:pathData="M13,9.3l0.4,0.9 1,0.1 -0.7,0.7 0.2,1 -0.9,-0.5 -0.9,0.5 0.2,-1 -0.7,-0.7 1,-0.1z" />
+    </group>
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

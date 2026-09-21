@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#F3BA2F" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- White Binance Diamonds -->
+    <path android:fillColor="#FFFFFF" android:pathData="M18,15 L21,18 L18,21 L15,18 Z M18,9 L21,12 L19,14 L18,13 L17,14 L15,12 Z M18,27 L15,24 L17,22 L18,23 L19,22 L21,24 Z M9,18 L12,15 L14,17 L13,18 L14,19 L12,21 Z M27,18 L24,21 L22,19 L23,18 L22,17 L24,15 Z" />
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#26A17B" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- White Tether ₮ Logo -->
+    <path android:fillColor="#FFFFFF" android:pathData="M19.7,17.7 C19.6,17.7 18.8,17.8 18,17.8 C17.3,17.8 16.4,17.7 16.3,17.7 C13.3,17.5 11,16.8 11,16 C11,15.2 13.3,14.5 16.3,14.3 L16.3,11.5 L11,11.5 L11,8.5 L25,8.5 L25,11.5 L19.7,11.5 L19.7,14.3 C22.7,14.5 25,15.2 25,16 C25,16.8 22.7,17.5 19.7,17.7 Z M19.7,18.8 C22.4,18.7 25,18 25,17.2 L25,23 C24.5,25.2 20.8,27 18,27 C15.2,27 11.5,25.2 11,23 L11,17.2 C11,18 13.6,18.7 16.3,18.8 L16.3,24.5 L19.7,24.5 L19.7,18.8 Z" />
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

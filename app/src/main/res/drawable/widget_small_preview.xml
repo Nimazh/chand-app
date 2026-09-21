@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <path
+        android:fillColor="#1C1C1E"
+        android:pathData="M16,0 H104 A16,16 0 0,1 120,16 V104 A16,16 0 0,1 104,120 H16 A16,16 0 0,1 0,104 V16 A16,16 0 0,1 16,0 Z" />
+    <!-- US Dollar Sign / Gold Bar -->
+    <path
+        android:fillColor="#30D158"
+        android:pathData="M30,30 H44 V36 H30 Z" />
+</vector>

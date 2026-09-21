@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#8E8E93" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <path android:strokeColor="#E5E5EA" android:strokeWidth="1.2" android:pathData="M 18,18 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0" />
+    <!-- Currency Coin Ring & Dot -->
+    <path android:fillColor="#FFFFFF" android:pathData="M 18,18 m -8,0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0" />
+    <path android:fillColor="#8E8E93" android:pathData="M 18,18 m -6,0 a 6,6 0 1,0 12,0 a 6,6 0 1,0 -12,0" />
+    <path android:fillColor="#FFFFFF" android:pathData="M 18,18 m -2.5,0 a 2.5,2.5 0 1,0 5,0 a 2.5,2.5 0 1,0 -5,0" />
+    <path android:strokeColor="#25000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

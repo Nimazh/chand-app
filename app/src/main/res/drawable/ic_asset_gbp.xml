@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <group>
+        <clip-path android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+        <path android:fillColor="#012169" android:pathData="M0,0h36v36h-36z" />
+        <!-- White Saltires -->
+        <path android:fillColor="#FFFFFF" android:pathData="M0,0 L36,36 M36,0 L0,36" android:strokeColor="#FFFFFF" android:strokeWidth="5" />
+        <!-- Red Saltires -->
+        <path android:fillColor="#C8102E" android:pathData="M0,0 L36,36 M36,0 L0,36" android:strokeColor="#C8102E" android:strokeWidth="2.5" />
+        <!-- White Cross -->
+        <path android:fillColor="#FFFFFF" android:pathData="M14.5,0h7v36h-7z M0,14.5h36v7h-36z" />
+        <!-- Red Cross -->
+        <path android:fillColor="#C8102E" android:pathData="M16,0h4v36h-4z M0,16h36v4h-36z" />
+    </group>
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

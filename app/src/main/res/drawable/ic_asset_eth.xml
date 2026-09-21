@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#627EEA" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- Multi-faceted Ethereum Diamond -->
+    <path android:fillColor="#FFFFFF" android:pathData="M18,7 L18,16.2 L24,18.9 Z" />
+    <path android:fillColor="#C0CBF6" android:pathData="M18,7 L12,18.9 L18,16.2 Z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M18,20.1 L18,29 L24,20.8 Z" />
+    <path android:fillColor="#C0CBF6" android:pathData="M18,29 L18,20.1 L12,20.8 Z" />
+    <path android:fillColor="#E5EBFC" android:pathData="M18,16.2 L24,18.9 L18,20.1 Z" />
+    <path android:fillColor="#A2B4F2" android:pathData="M12,18.9 L18,16.2 L18,20.1 Z" />
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

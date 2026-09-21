@@ -1,0 +1,38 @@
+# Local Android/Gradle configuration
+local.properties
+.gradle/
+build/
+**/build/
+.cxx/
+captures/
+
+# IDE files
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# Node.js output
+next-app/node_modules/
+next-app/.next/
+
+# Distribution artifacts and credentials
+*.apk
+*.aab
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+keystore.properties
+
+# Runtime and operating-system files
+*.log
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example

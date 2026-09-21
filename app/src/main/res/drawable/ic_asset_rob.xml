@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#F59E0B" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <path android:strokeColor="#FEF08A" android:strokeWidth="1" android:pathData="M 18,18 m -15.5,0 a 15.5,15.5 0 1,0 31,0 a 15.5,15.5 0 1,0 -31,0" />
+    <!-- Quarter Arc -->
+    <path android:fillColor="#D97706" android:pathData="M18,18 L18,6 A12,12 0 0,1 30,18 Z" />
+    <path android:fillColor="#FEF3C7" android:pathData="M13,14h2v8h-2z M13,14l-2,2v2l2,-2z M20,14h2v4h2v2h-2v2h-2v-2h-3v-2l3,-4z M19,18h1v-2.5l-1.8,2.5z" />
+    <path android:strokeColor="#25000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

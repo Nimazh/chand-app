@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#141414" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- 3 Solana Gradient Wave Bars -->
+    <!-- Top Bar -->
+    <path android:fillColor="#14F195" android:pathData="M11,10.5h11l3,3.5h-11z" />
+    <!-- Middle Bar -->
+    <path android:fillColor="#00D2B4" android:pathData="M25,16h-11l-3,3.5h11z" />
+    <!-- Bottom Bar -->
+    <path android:fillColor="#9945FF" android:pathData="M11,21.5h11l3,3.5h-11z" />
+    <path android:strokeColor="#33FFFFFF" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

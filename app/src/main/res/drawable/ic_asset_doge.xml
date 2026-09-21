@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#C2A633" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- White Doge Ð with crossbar -->
+    <path android:fillColor="#FFFFFF" android:pathData="M13,10 L19,10 C23,10 25.5,13 25.5,18 C25.5,23 23,26 19,26 L13,26 Z M16,13 L16,16.5 L20,16.5 L20,18 L16,18 L16,23 L18.5,23 C21,23 22.5,21 22.5,18 C22.5,15 21,13 18.5,13 Z M10,16.5h6v1.8h-6z" />
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#B45309" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- 8-Pointed Arabesque Star -->
+    <path android:fillColor="#F59E0B" android:pathData="M18,7 L21.5,13.5 L28.5,14 L23.5,19 L25,26 L18,22.5 L11,26 L12.5,19 L7.5,14 L14.5,13.5 Z" />
+    <path android:fillColor="#FEF08A" android:pathData="M18,11 L20,15 L25,15.5 L21,18.5 L22.5,23.5 L18,21 L13.5,23.5 L15,18.5 L11,15.5 L16,15 Z" />
+    <path android:fillColor="#B45309" android:pathData="M 18,18 m -3,0 a 3,3 0 1,0 6,0 a 3,3 0 1,0 -6,0" />
+    <path android:fillColor="#FEF3C7" android:pathData="M 18,18 m -1.5,0 a 1.5,1.5 0 1,0 3,0 a 1.5,1.5 0 1,0 -3,0" />
+    <path android:strokeColor="#25000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

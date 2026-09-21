@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">چند؟</string>
+    <string name="app_subtitle">نرخ لحظه‌ای ارز، طلا و کریپتو</string>
+
+    <!-- Widgets -->
+    <string name="widget_small_name">چند؟ - تک ارزی</string>
+    <string name="widget_small_desc">نمایش قیمت لحظه‌ای یک دارایی منتخب</string>
+    <string name="widget_medium_name">چند؟ - لیست خلاصه</string>
+    <string name="widget_medium_desc">نمایش ۴ نرخ اصلی بازار با به‌روزرسانی سریع</string>
+    <string name="widget_large_name">چند؟ - لیست کامل</string>
+    <string name="widget_large_desc">نمایش جامع دارایی‌های محبوب و نوسانات</string>
+
+    <!-- Categories -->
+    <string name="cat_all">همه</string>
+    <string name="cat_currency">ارزها</string>
+    <string name="cat_gold">طلا و سکه</string>
+    <string name="cat_crypto">ارز دیجیتال</string>
+    <string name="cat_watchlist">علاقه‌مندی‌ها</string>
+
+    <!-- Actions & Labels -->
+    <string name="search_hint">جستجوی نام یا نماد...</string>
+    <string name="last_update">آخرین به‌روزرسانی</string>
+    <string name="refresh">به‌روزرسانی</string>
+    <string name="toman">تومان</string>
+    <string name="rial">ریال</string>
+    <string name="calculator">ماشین‌حساب</string>
+    <string name="settings">تنظیمات</string>
+    <string name="low_24h">کمترین ۲۴س</string>
+    <string name="high_24h">بیشترین ۲۴س</string>
+    <string name="change_24h">تغییرات ۲۴ ساعت</string>
+    <string name="convert_to_toman">تبدیل به تومان</string>
+    <string name="amount">مقدار</string>
+    <string name="result">معادل</string>
+</resources>

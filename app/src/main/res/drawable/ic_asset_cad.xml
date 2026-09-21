@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <group>
+        <clip-path android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+        <path android:fillColor="#FFFFFF" android:pathData="M0,0h36v36h-36z" />
+        <path android:fillColor="#D80621" android:pathData="M0,0h9v36h-9z M27,0h9v36h-9z" />
+        <!-- Maple Leaf -->
+        <path android:fillColor="#D80621" android:pathData="M18,9l1.2,4.5 3.5,-1.8 -1.2,3.6 3.5,1.2 -3.8,2.2 1,5.2 -3.2,-1.5 -0.5,3.6 -1,-0 -0.5,-3.6 -3.2,1.5 1,-5.2 -3.8,-2.2 3.5,-1.2 -1.2,-3.6 3.5,1.8z" />
+    </group>
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

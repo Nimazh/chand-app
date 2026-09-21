@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backgrounds -->
+    <color name="bg_dark">#000000</color>
+    <color name="bg_secondary_dark">#0C0C0E</color>
+    <color name="card_bg_dark">#1C1C1E</color>
+    <color name="card_border_dark">#2C2C2E</color>
+    <color name="elevated_dark">#2C2C2E</color>
+
+    <!-- iOS Accents -->
+    <color name="ios_blue">#0A84FF</color>
+    <color name="ios_green">#30D158</color>
+    <color name="ios_green_bg">#1E3A28</color>
+    <color name="ios_red">#FF453A</color>
+    <color name="ios_red_bg">#3E1B20</color>
+    <color name="ios_orange">#FF9F0A</color>
+    <color name="ios_yellow">#FFD60A</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="text_tertiary">#636366</color>
+</resources>

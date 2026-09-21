@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <path android:fillColor="#EAB308" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <path android:strokeColor="#FEF08A" android:strokeWidth="1.2" android:pathData="M 18,18 m -15,0 a 15,15 0 1,0 30,0 a 15,15 0 1,0 -30,0" />
+    <!-- Weight Scale / Feather Motif -->
+    <path android:fillColor="#A16207" android:pathData="M18,10a2,2 0 1,0 0.1,0z M17,12h2v13h-2z M11,16l7,-2 7,2z M9,18l4,0 -2,4z M23,18l4,0 -2,4z" />
+    <path android:fillColor="#FEF9C3" android:pathData="M17.5,11a1,1 0 1,0 0.1,0z M12,18.5l2,0 -1,2z M24,18.5l2,0 -1,2z" />
+    <path android:strokeColor="#25000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

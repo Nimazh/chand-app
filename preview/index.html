@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پیش‌نمایش زنده اپلیکیشن و ویجت چند؟ (Chand)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-black: #000000;
+            --bg-card: #1C1C1E;
+            --bg-card-secondary: #2C2C2E;
+            --border-card: #2C2C2E;
+            --ios-blue: #0A84FF;
+            --ios-green: #30D158;
+            --ios-green-bg: rgba(48, 209, 88, 0.15);
+            --ios-red: #FF453A;
+            --ios-red-bg: rgba(255, 69, 58, 0.15);
+            --ios-yellow: #FFD60A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #8E8E93;
+            --text-tertiary: #636366;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #08080A;
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 24px 16px;
+        }
+
+        .header-title {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .header-title h1 {
+            font-size: 26px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Container Layout */
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* Phone Mockup */
+        .phone-mockup {
+            width: 375px;
+            height: 760px;
+            background: #000;
+            border-radius: 48px;
+            border: 10px solid #2C2C2E;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Phone Dynamic Island / Notch */
+        .phone-island {
+            width: 105px;
+            height: 25px;
+            background: #000;
+            border-radius: 16px;
+            margin: 10px auto 4px auto;
+            z-index: 10;
+        }
+
+        /* App Screen */
+        .app-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 10px 14px 14px 14px;
+        }
+
+        /* App Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+        }
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .app-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        .live-tag {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(48, 209, 88, 0.15);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: var(--ios-green);
+            font-weight: 600;
+        }
+        .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--ios-green);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover {
+            color: #fff;
+            background: var(--bg-card-secondary);
+        }
+
+        /* Search Bar */
+        .search-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 12px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .search-bar input {
+            background: none;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 13px;
+            width: 100%;
+        }
+        .search-bar input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Tabs */
+        .tabs-container {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: none;
+        }
+        .tabs-container::-webkit-scrollbar { display: none; }
+        .tab-pill {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .tab-pill.active {
+            background: var(--bg-card-secondary);
+            color: #fff;
+            font-weight: 700;
+        }
+
+        /* Price List */
+        .price-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-bottom: 20px;
+            scrollbar-width: none;
+        }
+        .price-list::-webkit-scrollbar { display: none; }
+
+        .price-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 16px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .price-card:hover {
+            background: #222226;
+        }
+        .price-card:active {
+            transform: scale(0.98);
+        }
+
+        .card-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .asset-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+        }
+        .icon-currency { background: rgba(10, 132, 255, 0.15); color: var(--ios-blue); }
+        .icon-gold { background: rgba(255, 214, 10, 0.15); color: var(--ios-yellow); }
+        .icon-crypto { background: rgba(255, 159, 10, 0.15); color: #FF9F0A; }
+
+        .asset-titles {
+            display: flex;
+            flex-direction: column;
+        }
+        .asset-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .asset-symbol {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .card-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sparkline {
+            width: 60px;
+            height: 26px;
+        }
+
+        .card-left {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 3px;
+        }
+        .price-val {
+            font-size: 15px;
+            font-weight: 800;
+            color: #fff;
+        }
+        .price-val span {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-right: 2px;
+            font-weight: 400;
+        }
+
+        .change-pill {
+            padding: 2px 7px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .change-pos {
+            background: var(--ios-green-bg);
+            color: var(--ios-green);
+        }
+        .change-neg {
+            background: var(--ios-red-bg);
+            color: var(--ios-red);
+        }
+
+        /* Widgets Showcase Panel */
+        .widgets-showcase {
+            flex: 1;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .section-badge {
+            display: inline-block;
+            background: rgba(10, 132, 255, 0.15);
+            color: var(--ios-blue);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .section-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 22px;
+        }
+
+        /* Widget Containers (Android Style with Glance look) */
+        .widget-preview-box {
+            background: #121214;
+            border-radius: 28px;
+            padding: 16px;
+            border: 1px dashed #38383A;
+            position: relative;
+        }
+        .widget-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Small Widget 2x2 */
+        .widget-small {
+            width: 155px;
+            height: 155px;
+            background: #1C1C1E;
+            border-radius: 22px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #2C2C2E;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .widget-small:hover {
+            transform: scale(1.02);
+        }
+
+        /* Medium Widget 4x2 */
+        .widget-medium {
+            width: 100%;
+            max-width: 440px;
+            background: #1C1C1E;
+            border-radius: 24px;
+            padding: 14px 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #2C2C2E;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .widget-medium-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #28282A;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+        }
+        .widget-refresh-btn {
+            background: #2C2C2E;
+            color: var(--ios-blue);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+        }
+        .widget-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .widget-row-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+        }
+        .widget-row-price {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Modal Sheet Simulation */
+        .modal-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1C1C1E;
+            border-radius: 28px 28px 0 0;
+            padding: 18px;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
+            z-index: 50;
+        }
+        .modal-overlay.open {
+            transform: translateY(0);
+        }
+        .modal-drag {
+            width: 36px;
+            height: 4px;
+            background: #3A3A3C;
+            border-radius: 2px;
+            margin: 0 auto 14px auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-title">
+        <h1>پیش‌نمایش زنده و تعاملی چند؟ (Chand)</h1>
+        <p>بازآفرینی کامل رابط کاربری iOS و ابزارک‌های تعاملی صفحه اصلی اندروید (Glance)</p>
+    </div>
+
+    <div class="preview-container">
+        <!-- Phone Mockup with App -->
+        <div class="phone-mockup">
+            <div class="phone-island"></div>
+
+            <div class="app-screen">
+                <!-- App Header -->
+                <div class="app-header">
+                    <div class="app-brand">
+                        <div class="app-title">چند؟</div>
+                        <div class="live-tag">
+                            <div class="pulse-dot"></div>
+                            زنده
+                        </div>
+                    </div>
+                    <div class="header-actions">
+                        <div class="icon-btn" onclick="toggleSearch()" title="جستجو">🔍</div>
+                        <div class="icon-btn" onclick="refreshData()" title="تازه‌سازی">↻</div>
+                    </div>
+                </div>
+
+                <!-- Search Input -->
+                <div class="search-bar" id="searchBar" style="display: none;">
+                    <input type="text" id="searchInput" placeholder="جستجوی نام ارز یا نماد..." oninput="filterPrices()">
+                </div>
+
+                <!-- Category Tabs -->
+                <div class="tabs-container">
+                    <div class="tab-pill active" onclick="setCategory('ALL', this)">همه</div>
+                    <div class="tab-pill" onclick="setCategory('CURRENCY', this)">ارزها</div>
+                    <div class="tab-pill" onclick="setCategory('GOLD', this)">طلا و سکه</div>
+                    <div class="tab-pill" onclick="setCategory('CRYPTO', this)">کریپتو</div>
+                    <div class="tab-pill" onclick="setCategory('FAV', this)">نشان‌شده‌ها ⭐</div>
+                </div>
+
+                <!-- Price List -->
+                <div class="price-list" id="priceListContainer">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Detail Sheet Modal inside phone -->
+                <div class="modal-overlay" id="detailModal">
+                    <div class="modal-drag"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div>
+                            <div id="modalName" style="font-size: 18px; font-weight: 800; color: #fff;">دلار آمریکا</div>
+                            <div id="modalSymbol" style="font-size: 12px; color: var(--text-secondary);">USD</div>
+                        </div>
+                        <button onclick="closeModal()" style="background: #2C2C2E; border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; cursor: pointer;">✕</button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div id="modalPrice" style="font-size: 24px; font-weight: 900; color: #fff;">۹۳,۸۵۰ تومان</div>
+                        <div id="modalChange" class="change-pill change-pos">+۰.۴۵٪</div>
+                    </div>
+                    <!-- Converter -->
+                    <div style="background: #141416; padding: 12px; border-radius: 12px; margin-bottom: 14px;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px;">ماشین‌حساب تبدیل:</div>
+                        <div style="display: flex; gap: 8px;">
+                            <input id="calcInput" type="number" value="1" oninput="calculateRate()" style="width: 70px; background: #222; border: 1px solid #333; color: #fff; border-radius: 8px; padding: 6px; text-align: center;">
+                            <div id="calcResult" style="flex: 1; background: #222; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; font-weight: 700; color: var(--ios-green); font-size: 13px;">۹۳,۸۵۰ تومان</div>
+                        </div>
+                    </div>
+                    <button onclick="setAsWidget()" style="width: 100%; background: var(--ios-blue); color: #fff; border: none; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer;">تنظیم در ویجت تکی صفحه اصلی</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Android Widgets Showcase -->
+        <div class="widgets-showcase">
+            <div>
+                <span class="section-badge">ویجت‌های صفحه اصلی اندروید (Jetpack Glance)</span>
+                <h2 class="section-title">پیش‌نمایش تعاملی ویجت‌ها</h2>
+                <p class="section-desc">ویجت‌های ساخته‌شده با Jetpack Glance به راحتی روی هوم‌اسکرین گوشی قرار می‌گیرند و هر ۱۵ دقیقه به طور پس‌زمینه بروزرسانی می‌شوند.</p>
+            </div>
+
+            <!-- Small Widget (2x2) -->
+            <div class="widget-preview-box">
+                <div class="widget-label">
+                    <span>ویجت کوچک (۲ × ۲) - نمایش تکی</span>
+                    <span>سایز: 2x2</span>
+                </div>
+                <div class="widget-small" onclick="openModalById(selectedSmallWidgetId)">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="smallWidgetName" style="font-weight: 800; font-size: 14px; color: #fff;">دلار آمریکا</span>
+                        <span id="smallWidgetSymbol" style="font-size: 11px; color: var(--text-secondary);">USD</span>
+                    </div>
+                    <div>
+                        <div id="smallWidgetPrice" style="font-size: 18px; font-weight: 900; color: #fff;">۹۳,۸۵۰</div>
+                        <div style="font-size: 10px; color: var(--text-tertiary);">تومان</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span id="smallWidgetChange" class="change-pill change-pos">+۰.۴۵٪</span>
+                        <span style="font-size: 10px; color: var(--text-tertiary); font-weight: 700;">چند؟</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Medium Widget (4x2) -->
+            <div class="widget-preview-box">
+                <div class="widget-label">
+                    <span>ویجت متوسط (۴ × ۲) - خلاصه بازار ۴ نرخ</span>
+                    <span>سایز: 4x2</span>
+                </div>
+                <div class="widget-medium">
+                    <div class="widget-medium-header">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-weight: 800; font-size: 14px; color: #fff;">چند؟</span>
+                            <span style="font-size: 11px; color: var(--text-secondary);">نرخ لحظه‌ای بازار</span>
+                        </div>
+                        <button class="widget-refresh-btn" onclick="refreshData()">↻ تازه‌سازی</button>
+                    </div>
+                    <div id="mediumWidgetRows">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const initialPrices = [
+            { id: "usd", name: "دلار آمریکا", symbol: "USD", cat: "CURRENCY", price: 228500, change: 0.26, fav: true, trend: [226500, 227500, 228100, 228500] },
+            { id: "eur", name: "یورو", symbol: "EUR", cat: "CURRENCY", price: 264050, change: 0.67, fav: true, trend: [261000, 262500, 263800, 264050] },
+            { id: "aed", name: "درهم امارات", symbol: "AED", cat: "CURRENCY", price: 62550, change: 0.31, fav: true, trend: [62000, 62200, 62450, 62550] },
+            { id: "emami", name: "سکه امامی", symbol: "EMAMI", cat: "GOLD", price: 235500000, change: 1.52, fav: true, trend: [233500000, 234200000, 235500000] },
+            { id: "bahar", name: "سکه بهار آزادی", symbol: "BAHAR", cat: "GOLD", price: 231270000, change: 1.39, fav: false, trend: [229500000, 230500000, 231270000] },
+            { id: "gold18", name: "طلای ۱۸ عیار", symbol: "GOLD18", cat: "GOLD", price: 23750000, change: 1.66, fav: true, trend: [23400000, 23550000, 23750000] },
+            { id: "rob", name: "ربع سکه", symbol: "ROB", cat: "GOLD", price: 63000000, change: 0.10, fav: true, trend: [62600000, 62800000, 63000000] },
+            { id: "usdt", name: "تتر", symbol: "USDT", cat: "CRYPTO", price: 229180, change: 0.92, fav: true, trend: [227500, 228200, 229180] },
+            { id: "btc", name: "بیت‌کوین", symbol: "BTC", cat: "CRYPTO", price: 18646176000, change: 1.33, fav: true, trend: [18350000000, 18500000000, 18646176000] },
+            { id: "eth", name: "اتریوم", symbol: "ETH", cat: "CRYPTO", price: 606950000, change: 1.68, fav: false, trend: [598000000, 602000000, 606950000] },
+            { id: "ton", name: "تون‌کوین", symbol: "TON", cat: "CRYPTO", price: 508300, change: 0.81, fav: false, trend: [502000, 505000, 508300] }
+        ];
+
+        let currentCategory = 'ALL';
+        let currentModalItem = null;
+        let selectedSmallWidgetId = 'usd';
+
+        function renderPrices() {
+            const container = document.getElementById('priceListContainer');
+            container.innerHTML = '';
+
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+
+            const filtered = initialPrices.filter(item => {
+                const matchesCat = (currentCategory === 'ALL') ||
+                                   (currentCategory === 'FAV' && item.fav) ||
+                                   (item.cat === currentCategory);
+                const matchesQuery = !query || item.name.toLowerCase().includes(query) || item.symbol.toLowerCase().includes(query);
+                return matchesCat && matchesQuery;
+            });
+
+            filtered.forEach(item => {
+                const isPos = item.change >= 0;
+                const sign = isPos ? '+' : '';
+                const card = document.createElement('div');
+                card.className = 'price-card';
+                card.onclick = () => openModal(item);
+
+                const iconClass = item.cat === 'CURRENCY' ? 'icon-currency' : (item.cat === 'GOLD' ? 'icon-gold' : 'icon-crypto');
+
+                card.innerHTML = `
+                    <div class="card-right">
+                        <div class="asset-icon ${iconClass}">${item.symbol.substring(0, 2)}</div>
+                        <div class="asset-titles">
+                            <span class="asset-name">${item.name}</span>
+                            <span class="asset-symbol">${item.symbol}</span>
+                        </div>
+                    </div>
+                    <div class="card-center">
+                        <svg class="sparkline" viewBox="0 0 60 26">
+                            <path d="${generateSvgPath(item.trend, isPos)}" fill="none" stroke="${isPos ? '#30D158' : '#FF453A'}" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="card-left">
+                        <div class="price-val">${item.price.toLocaleString('fa-IR')} <span>تومان</span></div>
+                        <div class="change-pill ${isPos ? 'change-pos' : 'change-neg'}">${sign}${item.change.toLocaleString('fa-IR')}٪</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            renderMediumWidget();
+        }
+
+        function generateSvgPath(points, isPos) {
+            if (!points || points.length < 2) return "M 0 13 L 60 13";
+            const min = Math.min(...points);
+            const max = Math.max(...points);
+            const range = (max - min) === 0 ? 1 : (max - min);
+            const w = 60, h = 26;
+
+            return points.map((val, idx) => {
+                const x = (idx / (points.length - 1)) * w;
+                const y = h - ((val - min) / range) * (h - 8) - 4;
+                return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
+            }).join(' ');
+        }
+
+        function renderMediumWidget() {
+            const container = document.getElementById('mediumWidgetRows');
+            container.innerHTML = '';
+            const mediumItems = initialPrices.slice(0, 4);
+
+            mediumItems.forEach(item => {
+                const isPos = item.change >= 0;
+                const sign = isPos ? '+' : '';
+                const row = document.createElement('div');
+                row.className = 'widget-row';
+                row.style.marginBottom = '6px';
+                row.innerHTML = `
+                    <span class="widget-row-title">${item.name}</span>
+                    <div class="widget-row-price">
+                        <span style="font-size: 13px; font-weight: 700; color: #fff;">${item.price.toLocaleString('fa-IR')} ت</span>
+                        <span class="change-pill ${isPos ? 'change-pos' : 'change-neg'}">${sign}${item.change.toLocaleString('fa-IR')}٪</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function setCategory(cat, el) {
+            currentCategory = cat;
+            document.querySelectorAll('.tab-pill').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            renderPrices();
+        }
+
+        function toggleSearch() {
+            const bar = document.getElementById('searchBar');
+            bar.style.display = bar.style.display === 'none' ? 'flex' : 'none';
+            if (bar.style.display === 'flex') {
+                document.getElementById('searchInput').focus();
+            } else {
+                document.getElementById('searchInput').value = '';
+                renderPrices();
+            }
+        }
+
+        function filterPrices() {
+            renderPrices();
+        }
+
+        function refreshData() {
+            // Add slight realistic jitter
+            initialPrices.forEach(item => {
+                const delta = (Math.random() - 0.48) * 0.003;
+                item.price = Math.round(item.price * (1 + delta));
+            });
+            renderPrices();
+            updateSmallWidget();
+        }
+
+        function openModal(item) {
+            currentModalItem = item;
+            document.getElementById('modalName').innerText = item.name;
+            document.getElementById('modalSymbol').innerText = item.symbol;
+            document.getElementById('modalPrice').innerText = `${item.price.toLocaleString('fa-IR')} تومان`;
+            const isPos = item.change >= 0;
+            const changeEl = document.getElementById('modalChange');
+            changeEl.innerText = `${isPos ? '+' : ''}${item.change.toLocaleString('fa-IR')}٪`;
+            changeEl.className = `change-pill ${isPos ? 'change-pos' : 'change-neg'}`;
+
+            calculateRate();
+            document.getElementById('detailModal').classList.add('open');
+        }
+
+        function openModalById(id) {
+            const item = initialPrices.find(i => i.id === id) || initialPrices[0];
+            openModal(item);
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('open');
+        }
+
+        function calculateRate() {
+            if (!currentModalItem) return;
+            const amount = parseFloat(document.getElementById('calcInput').value) || 0;
+            const total = Math.round(amount * currentModalItem.price);
+            document.getElementById('calcResult').innerText = `${total.toLocaleString('fa-IR')} تومان`;
+        }
+
+        function setAsWidget() {
+            if (!currentModalItem) return;
+            selectedSmallWidgetId = currentModalItem.id;
+            updateSmallWidget();
+            closeModal();
+        }
+
+        function updateSmallWidget() {
+            const item = initialPrices.find(i => i.id === selectedSmallWidgetId) || initialPrices[0];
+            document.getElementById('smallWidgetName').innerText = item.name;
+            document.getElementById('smallWidgetSymbol').innerText = item.symbol;
+            document.getElementById('smallWidgetPrice').innerText = item.price.toLocaleString('fa-IR');
+            const isPos = item.change >= 0;
+            const changeEl = document.getElementById('smallWidgetChange');
+            changeEl.innerText = `${isPos ? '+' : ''}${item.change.toLocaleString('fa-IR')}٪`;
+            changeEl.className = `change-pill ${isPos ? 'change-pos' : 'change-neg'}`;
+        }
+
+        // Init
+        renderPrices();
+        updateSmallWidget();
+    </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <!-- Golden Coin Base -->
+    <path android:fillColor="#F59E0B" android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+    <!-- Outer Inset Ring -->
+    <path android:strokeColor="#FDE68A" android:strokeWidth="1.2" android:pathData="M 18,18 m -15.5,0 a 15.5,15.5 0 1,0 31,0 a 15.5,15.5 0 1,0 -31,0" />
+    <!-- Milled Dots around circumference -->
+    <path android:fillColor="#FEF3C7" android:pathData="M18,4.5a1,1 0 1,0 0.1,0z M18,31.5a1,1 0 1,0 0.1,0z M4.5,18a1,1 0 1,0 0.1,0z M31.5,18a1,1 0 1,0 0.1,0z M8.5,8.5a1,1 0 1,0 0.1,0z M27.5,27.5a1,1 0 1,0 0.1,0z M8.5,27.5a1,1 0 1,0 0.1,0z M27.5,8.5a1,1 0 1,0 0.1,0z" />
+    <!-- Emami Coin Emblem (Sun & Floral Wreath) -->
+    <path android:fillColor="#FEF08A" android:pathData="M18,11a7,7 0 1,0 0.1,0z" />
+    <path android:fillColor="#D97706" android:pathData="M18,13a5,5 0 1,0 0.1,0z" />
+    <path android:fillColor="#FEF3C7" android:pathData="M18,15l0.8,1.6 1.8,0.2 -1.3,1.3 0.3,1.8 -1.6,-0.9 -1.6,0.9 0.3,-1.8 -1.3,-1.3 1.8,-0.2z" />
+    <!-- Outer Shadow Border -->
+    <path android:strokeColor="#25000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

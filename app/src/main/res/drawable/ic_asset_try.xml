@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <group>
+        <clip-path android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+        <path android:fillColor="#E30A17" android:pathData="M0,0h36v36h-36z" />
+        <!-- White Crescent Outer Circle -->
+        <path android:fillColor="#FFFFFF" android:pathData="M 15,18 m -8,0 a 8,8 0 1,0 16,0 a 8,8 0 1,0 -16,0" />
+        <!-- Red Cutout Inner Circle -->
+        <path android:fillColor="#E30A17" android:pathData="M 17,18 m -6.4,0 a 6.4,6.4 0 1,0 12.8,0 a 6.4,6.4 0 1,0 -12.8,0" />
+        <!-- Star -->
+        <path android:fillColor="#FFFFFF" android:pathData="M23,15.5l0.8,1.9 2,0.3 -1.5,1.4 0.4,2 -1.7,-1 -1.7,1 0.4,-2 -1.5,-1.4 2,-0.3z" />
+    </group>
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>

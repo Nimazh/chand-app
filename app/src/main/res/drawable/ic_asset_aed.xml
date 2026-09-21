@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="36dp"
+    android:height="36dp"
+    android:viewportWidth="36"
+    android:viewportHeight="36">
+    <group>
+        <clip-path android:pathData="M 18,18 m -18,0 a 18,18 0 1,0 36,0 a 18,18 0 1,0 -36,0" />
+        <!-- 3 Horizontal Stripes: Green, White, Black -->
+        <path android:fillColor="#00732F" android:pathData="M10,0h26v12h-26z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M10,12h26v12h-26z" />
+        <path android:fillColor="#000000" android:pathData="M10,24h26v12h-26z" />
+        <!-- Vertical Red Stripe on Left -->
+        <path android:fillColor="#FF0000" android:pathData="M0,0h11v36h-11z" />
+    </group>
+    <path android:strokeColor="#1F000000" android:strokeWidth="0.8" android:pathData="M 18,18 m -17.6,0 a 17.6,17.6 0 1,0 35.2,0 a 17.6,17.6 0 1,0 -35.2,0" />
+</vector>
