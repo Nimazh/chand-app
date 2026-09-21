@@ -3,10 +3,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:name=".ChandApp"
@@ -80,16 +76,6 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/chand_widget_large_info" />
-        </receiver>
-
-        <!-- Fast 2-Minute Widget Price Alarm Receiver -->
-        <receiver
-            android:name=".receiver.WidgetPriceAlarmReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="com.chand.app.ACTION_SYNC_WIDGET_PRICES" />
-            </intent-filter>
         </receiver>
 
     </application>

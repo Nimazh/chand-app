@@ -54,6 +54,7 @@ fun MainScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val isSearchActive by viewModel.isSearchActive.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     val lastUpdatedText by viewModel.formattedLastUpdateTime.collectAsState()
     val selectedDetailItem by viewModel.selectedItemForDetail.collectAsState()
 
@@ -78,7 +79,8 @@ fun MainScreen(
                     isRefreshing = isRefreshing,
                     onRefresh = viewModel::refreshPrices,
                     onOpenSettings = onOpenSettings,
-                    lastUpdatedText = lastUpdatedText
+                    lastUpdatedText = lastUpdatedText,
+                    syncStatus = syncStatus
                 )
             }
         ) { innerPadding ->

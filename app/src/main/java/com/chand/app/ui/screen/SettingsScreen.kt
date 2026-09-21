@@ -104,8 +104,7 @@ fun SettingsScreen(
     }
 
     val prices by viewModel.repository.prices.collectAsState()
-    val smallItemPref by prefManager.smallWidgetItemFlow.collectAsState(initial = "usd")
-    val customApiUrlPref by prefManager.customApiUrlFlow.collectAsState(initial = "")
+    val smallItemPref by prefManager.smallWidgetItemFlow().collectAsState(initial = "usd")
 
     val widgetThemePref by prefManager.widgetThemeFlow.collectAsState(initial = PreferencesManager.DEFAULT_WIDGET_THEME)
     val widgetOpacityPref by prefManager.widgetOpacityFlow.collectAsState(initial = PreferencesManager.DEFAULT_WIDGET_OPACITY)
@@ -116,8 +115,6 @@ fun SettingsScreen(
     var selectedCornerRadius by remember(widgetCornerRadiusPref) { mutableStateOf(widgetCornerRadiusPref) }
     var isStyleSaved by remember { mutableStateOf(false) }
 
-    var apiUrlInput by remember(customApiUrlPref) { mutableStateOf(customApiUrlPref) }
-    var isSavedUrl by remember { mutableStateOf(false) }
 
     val cardShape = RoundedCornerShape(18.dp)
 
@@ -759,71 +756,6 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-
-                // 5. Custom API Endpoint
-                Text(
-                    text = "تنظیم آدرس اختصاصی API (اختیاری)",
-                    color = AppleTextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "اگر پروکسی یا سرور اختصاصی خود را دارید، آدرس آن را وارد کنید:",
-                    color = AppleTextSecondary,
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = apiUrlInput,
-                    onValueChange = {
-                        apiUrlInput = it
-                        isSavedUrl = false
-                    },
-                    placeholder = { Text("https://my-proxy-api.com/rates", fontSize = 13.sp) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = AppleTextPrimary,
-                        unfocusedTextColor = AppleTextPrimary,
-                        focusedBorderColor = AppleBlue,
-                        unfocusedBorderColor = AppleCardBorder,
-                        focusedContainerColor = AppleCardBackground,
-                        unfocusedContainerColor = AppleCardBackground
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                LiquidGlassButton(
-                    onClick = {
-                        scope.launch {
-                            prefManager.setCustomApiUrl(apiUrlInput.trim())
-                            isSavedUrl = true
-                        }
-                    },
-                    style = if (isSavedUrl) LiquidGlassButtonStyle.SUCCESS else LiquidGlassButtonStyle.PRIMARY,
-                    shape = RoundedCornerShape(50),
-                    height = 46.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isSavedUrl) {
-                        Icon(
-                            imageVector = Icons.Filled.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(17.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                    }
-                    Text(
-                        text = if (isSavedUrl) "تنظیمات با موفقیت ذخیره شد" else "ذخیره تنظیمات API",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
 
                 Spacer(modifier = Modifier.height(36.dp))
             }

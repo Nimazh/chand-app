@@ -22,8 +22,8 @@ class PriceSyncWorker(
             val apiService = PriceApiService()
             val repository = PriceRepository(apiService, prefManager)
 
-            // Refresh prices
-            repository.refreshPrices()
+            val refreshResult = repository.refreshPrices()
+            if (refreshResult.isFailure) return Result.retry()
 
             // Update all Glance widgets on the home screen
             ChandSmallWidget().updateAll(context)

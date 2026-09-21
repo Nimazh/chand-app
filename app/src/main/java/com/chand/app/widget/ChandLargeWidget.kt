@@ -77,7 +77,7 @@ class ChandLargeWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(bgColor)
-                .cornerRadius(if (cornerRadius > 20) cornerRadius.dp else 22.dp)
+                .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
                 .clickable(actionStartActivity<MainActivity>())
                 .padding(14.dp)
         ) {
@@ -90,7 +90,7 @@ class ChandLargeWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
                     Text(
-                        text = "Chand?!",
+                        text = "چند؟",
                         style = TextStyle(
                             color = ColorProvider(textColor),
                             fontSize = 17.sp,
@@ -99,7 +99,7 @@ class ChandLargeWidget : GlanceAppWidget() {
                     )
                     Spacer(modifier = GlanceModifier.width(8.dp))
                     Text(
-                        text = "Market Rates",
+                        text = "نرخ بازار",
                         style = TextStyle(
                             color = ColorProvider(subTextColor),
                             fontSize = 12.sp
@@ -120,6 +120,13 @@ class ChandLargeWidget : GlanceAppWidget() {
                 }
 
                 Spacer(modifier = GlanceModifier.height(10.dp))
+
+                if (items.isEmpty()) {
+                    Text(
+                        text = "برای دریافت قیمت، برنامه را باز کنید",
+                        style = TextStyle(color = ColorProvider(subTextColor), fontSize = 13.sp)
+                    )
+                }
 
                 items.forEachIndexed { index, item ->
                     val changeColor = if (item.isFavorable) Color(0xFF34C759) else Color(0xFFFF3B30)

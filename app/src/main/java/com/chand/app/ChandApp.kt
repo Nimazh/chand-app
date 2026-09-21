@@ -6,7 +6,6 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.chand.app.receiver.WidgetPriceAlarmReceiver
 import com.chand.app.worker.PriceSyncWorker
 import java.util.concurrent.TimeUnit
 
@@ -15,7 +14,6 @@ class ChandApp : Application() {
     override fun onCreate() {
         super.onCreate()
         setupBackgroundSync()
-        WidgetPriceAlarmReceiver.scheduleNextAlarm(this)
     }
 
     private fun setupBackgroundSync() {

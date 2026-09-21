@@ -62,11 +62,14 @@ import com.chand.app.ui.theme.AppleCardBackground
 import com.chand.app.ui.theme.AppleCardBorder
 import com.chand.app.ui.theme.AppleGreen
 import com.chand.app.ui.theme.AppleHeaderTitle
+import com.chand.app.ui.theme.AppleOrange
+import com.chand.app.ui.theme.AppleRed
 import com.chand.app.ui.theme.AppleSearchBg
 import com.chand.app.ui.theme.AppleTextPrimary
 import com.chand.app.ui.theme.AppleTextSecondary
 import com.chand.app.ui.theme.AppleTextTertiary
 import com.kyant.backdrop.Backdrop
+import com.chand.app.data.repository.PriceSyncStatus
 
 /**
  * Apple Chand Header (Matches Photo 1 and Photo 2):
@@ -83,6 +86,7 @@ fun ChandHeader(
     onRefresh: () -> Unit,
     onOpenSettings: () -> Unit,
     lastUpdatedText: String = "",
+    syncStatus: PriceSyncStatus = PriceSyncStatus.IDLE,
     modifier: Modifier = Modifier,
     backdrop: Backdrop? = null
 ) {
@@ -127,12 +131,20 @@ fun ChandHeader(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Apple Live Pulse Indicator
+                    // The indicator reflects the actual cache/network state.
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(AppleGreen)
+                            .background(
+                                when (syncStatus) {
+                                    PriceSyncStatus.SUCCESS -> AppleGreen
+                                    PriceSyncStatus.REFRESHING -> AppleBlue
+                                    PriceSyncStatus.STALE -> AppleOrange
+                                    PriceSyncStatus.ERROR -> AppleRed
+                                    PriceSyncStatus.IDLE -> AppleTextSecondary
+                                }
+                            )
                     )
                 }
 
@@ -163,11 +175,16 @@ fun ChandHeader(
                 }
             }
 
-            // Timestamp Row (Matches Photo 1: "Sep 16, 2020 at 8:13 PM" or Jalali)
-            if (lastUpdatedText.isNotBlank()) {
+            val statusText = when (syncStatus) {
+                PriceSyncStatus.REFRESHING -> "در حال دریافت قیمت‌ها"
+                PriceSyncStatus.STALE -> "نمایش دادهٔ ذخیره‌شده؛ اتصال را بررسی کنید"
+                PriceSyncStatus.ERROR -> "دریافت قیمت ناموفق بود"
+                else -> lastUpdatedText.takeIf { it.isNotBlank() }?.let { "آخرین دریافت: $it" } ?: "هنوز داده‌ای دریافت نشده"
+            }
+            if (statusText.isNotBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = lastUpdatedText,
+                    text = statusText,
                     fontSize = 12.sp,
                     color = AppleTextSecondary,
                     fontWeight = FontWeight.Normal

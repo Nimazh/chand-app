@@ -15,9 +15,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -81,8 +84,6 @@ fun PriceDetailModal(
 
     val view = LocalView.current
     val changeColor = if (item.isFavorable) AppleGreen else AppleRed
-    var selectedTimeframe by remember { mutableStateOf("1D") }
-    val timeframes = listOf("1D", "1W", "1M", "1Y", "5Y", "All")
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -103,6 +104,8 @@ fun PriceDetailModal(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
                     .padding(horizontal = 20.dp, vertical = 6.dp)
             ) {
                 // 1. Top Header Row (Matches Photo 2 right screen): Flag, Name/Symbol (Left) & Close (X) (Right)
@@ -270,59 +273,18 @@ fun PriceDetailModal(
                             height = 110.dp,
                             showGradient = true
                         )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // 4. Timeframe Selector: 1D  1W  1M  1Y  5Y  All (Matches Photo 2 right screen)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(AppleSegmentBg)
-                        .padding(3.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    timeframes.forEach { tf ->
-                        val isSelected = tf == selectedTimeframe
-                        val textColor by animateColorAsState(
-                            targetValue = if (isSelected) AppleTextPrimary else AppleTextSecondary,
-                            label = "tf_color"
+                    } else {
+                        Text(
+                            text = "پس از چند دریافت، روند قیمت در این‌جا نمایش داده می‌شود.",
+                            color = AppleTextSecondary,
+                            fontSize = 13.sp
                         )
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) AppleCardBackground else Color.Transparent)
-                                .clickable {
-                                    try {
-                                        view.performHapticFeedback(
-                                            HapticFeedbackConstants.VIRTUAL_KEY,
-                                            HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING
-                                        )
-                                    } catch (_: Throwable) {
-                                        try { view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY) } catch (_: Throwable) {}
-                                    }
-                                    selectedTimeframe = tf
-                                }
-                                .padding(vertical = 5.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = tf,
-                                color = textColor,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                            )
-                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // 5. Interactive Currency Calculator Section
+                // Interactive currency calculator
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
@@ -335,7 +297,10 @@ fun PriceDetailModal(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         var inputAmount by remember { mutableStateOf("1") }
-                        val amount = inputAmount.toDoubleOrNull() ?: 0.0
+                        val normalizedAmount = inputAmount.replace('۰', '0').replace('۱', '1').replace('۲', '2')
+                            .replace('۳', '3').replace('۴', '4').replace('۵', '5').replace('۶', '6')
+                            .replace('۷', '7').replace('۸', '8').replace('۹', '9').replace('٫', '.')
+                        val amount = normalizedAmount.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
                         val convertedTomans = (amount * item.priceTomans).toLong()
 
                         Row(
@@ -361,9 +326,11 @@ fun PriceDetailModal(
                                     )
                                     BasicTextField(
                                         value = inputAmount,
-                                        onValueChange = { inputAmount = it },
+                                        onValueChange = { value ->
+                                            if (value.length <= 18 && value.all { it.isDigit() || it == '.' || it == '٫' }) inputAmount = value
+                                        },
                                         singleLine = true,
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                         textStyle = TextStyle(
                                             color = AppleTextPrimary,
                                             fontSize = 14.sp,

@@ -82,7 +82,7 @@ class WidgetConfigActivity : ComponentActivity() {
             return
         }
 
-        val items = PriceApiService.getMarketBaselineItems()
+        val items = PriceApiService.getPreviewItems()
         val prefManager = PreferencesManager(this)
 
         setContent {
@@ -112,6 +112,12 @@ class WidgetConfigActivity : ComponentActivity() {
                     Text(
                         text = "Focus on a single item",
                         fontSize = 13.sp,
+                        color = AppleTextSecondary
+                    )
+
+                    Text(
+                        text = "پیش‌نمایش استایل است؛ قیمت واقعی پس از دریافت آنلاین نمایش داده می‌شود.",
+                        fontSize = 11.sp,
                         color = AppleTextSecondary
                     )
 
@@ -304,7 +310,7 @@ class WidgetConfigActivity : ComponentActivity() {
                     Button(
                         onClick = {
                             scope.launch {
-                                prefManager.setSmallWidgetItem(selectedItemId)
+                                prefManager.setSmallWidgetItem(selectedItemId, appWidgetId)
                                 prefManager.setWidgetTheme(selectedThemeId)
                                 ChandSmallWidget().updateAll(this@WidgetConfigActivity)
 
@@ -315,7 +321,7 @@ class WidgetConfigActivity : ComponentActivity() {
                                 finish()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = AppleTextPrimary),
+                        colors = ButtonDefaults.buttonColors(containerColor = AppleBlue, contentColor = Color.White),
                         shape = RoundedCornerShape(50),
                         modifier = Modifier
                             .fillMaxWidth()

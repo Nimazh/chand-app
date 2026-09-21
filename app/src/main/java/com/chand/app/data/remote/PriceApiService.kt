@@ -30,10 +30,10 @@ class PriceApiService(
         )
 
         /**
-         * Real-time baseline items (2026 accurate market rates)
-         * Used immediately upon app startup before the first network response arrives.
+         * Static preview-only data for the widget configuration mockup.
+         * This must never be used by the price repository or production widgets.
          */
-        fun getMarketBaselineItems(): List<PriceItem> {
+        fun getPreviewItems(): List<PriceItem> {
             val items = mutableListOf<PriceItem>()
 
             // Currencies (Tomans) - Baseline matches Apple Chand screenshot (USD: 100,115 and ↓5,625)
@@ -132,7 +132,7 @@ class PriceApiService(
                     )
 
                     // Find Tether rate to accurately convert other cryptos to USD
-                    var usdtPriceTomans = 229180L
+                    var usdtPriceTomans: Long? = null
                     val usdtNode = current["crypto-tether-irr"] as? Map<String, Any>
                     if (usdtNode != null) {
                         val usdtRls = parseCleanLong(usdtNode["p"])
@@ -150,8 +150,8 @@ class PriceApiService(
                         val priceTomans = rawPriceRls / 10
                         val rawHigh = parseCleanLong(node["h"]) / 10
                         val rawLow = parseCleanLong(node["l"]) / 10
-                        val high = if (rawHigh > 0) rawHigh else (priceTomans * 1.01).toLong()
-                        val low = if (rawLow > 0) rawLow else (priceTomans * 0.99).toLong()
+                        val high = rawHigh
+                        val low = rawLow
 
                         val rawDp = parseCleanDouble(node["dp"])
                         val dt = node["dt"]?.toString()?.lowercase() ?: ""
@@ -160,18 +160,9 @@ class PriceApiService(
                         val changeAmount = if (changePercent < 0) -Math.abs(rawD) else Math.abs(rawD)
 
                         val priceUsd = if (def.category == PriceCategory.CRYPTO) {
-                            if (def.id == "usdt") 1.0 else if (usdtPriceTomans > 0) priceTomans.toDouble() / usdtPriceTomans else null
+                            if (def.id == "usdt") 1.0 else usdtPriceTomans?.takeIf { it > 0 }?.let { priceTomans.toDouble() / it }
                         } else null
-
-                        val sparklineBase = if (def.category == PriceCategory.CRYPTO && def.id != "usdt" && priceUsd != null) {
-                            priceUsd
-                        } else {
-                            priceTomans.toDouble()
-                        }
-                        val ratio = if (priceTomans > 0) sparklineBase / priceTomans.toDouble() else 1.0
-                        val sparklineHigh = high.toDouble() * ratio
-                        val sparklineLow = low.toDouble() * ratio
-                        val sparkline = generateDeterministicSparkline(sparklineBase, sparklineHigh, sparklineLow, changePercent)
+                        if (def.category == PriceCategory.CRYPTO && def.id != "usdt" && priceUsd == null) continue
 
                         items.add(
                             PriceItem(
@@ -184,7 +175,7 @@ class PriceApiService(
                                 high24h = high,
                                 low24h = low,
                                 isFavorite = def.isDefaultFavorite,
-                                sparklinePoints = sparkline,
+                                sparklinePoints = emptyList(),
                                 priceUsd = priceUsd,
                                 changeAmount = changeAmount
                             )
@@ -222,8 +213,8 @@ class PriceApiService(
                 val stats = data.stats ?: return@withContext emptyList()
 
                 val cryptoList = mutableListOf<PriceItem>()
-                val usdtRls = stats["usdt-rls"]?.latest?.toLongOrNull() ?: 2291800L
-                val usdtTomans = if (usdtRls > 0) usdtRls / 10 else 229180L
+                val usdtRls = parseCleanLong(stats["usdt-rls"]?.latest)
+                val usdtTomans = usdtRls.takeIf { it > 0 }?.div(10)
 
                 val cryptoDefs = listOf(
                     Triple("usdt-rls", "تتر", "USDT"),
@@ -240,21 +231,16 @@ class PriceApiService(
                 for ((key, nameFa, symbol) in cryptoDefs) {
                     val item = stats[key]
                     if (item?.latest != null) {
-                        val priceRls = item.latest.toLongOrNull() ?: 0L
+                        val priceRls = parseCleanLong(item.latest)
                         val priceTomans = priceRls / 10
-                        val changePercent = item.dayChange?.toDoubleOrNull() ?: 0.0
-                        val high = (item.dayHigh?.toLongOrNull() ?: 0L) / 10
-                        val low = (item.dayLow?.toLongOrNull() ?: 0L) / 10
+                        if (priceTomans <= 0) continue
+                        val changePercent = parseCleanDouble(item.dayChange)
+                        val high = parseCleanLong(item.dayHigh) / 10
+                        val low = parseCleanLong(item.dayLow) / 10
 
                         val isUsdt = symbol.equals("USDT", ignoreCase = true)
-                        val priceUsd = if (isUsdt) 1.0 else if (usdtTomans > 0) priceTomans.toDouble() / usdtTomans else null
-                        val sparklineBase = if (!isUsdt && priceUsd != null) priceUsd else priceTomans.toDouble()
-                        val ratio = if (priceTomans > 0) sparklineBase / priceTomans.toDouble() else 1.0
-                        val effHigh = if (high > 0) high else (priceTomans * 1.01).toLong()
-                        val effLow = if (low > 0) low else (priceTomans * 0.99).toLong()
-                        val sparklineHigh = effHigh.toDouble() * ratio
-                        val sparklineLow = effLow.toDouble() * ratio
-                        val sparkline = generateDeterministicSparkline(sparklineBase, sparklineHigh, sparklineLow, changePercent)
+                        val priceUsd = if (isUsdt) 1.0 else usdtTomans?.takeIf { it > 0 }?.let { priceTomans.toDouble() / it }
+                        if (!isUsdt && priceUsd == null) continue
 
                         cryptoList.add(
                             PriceItem(
@@ -264,9 +250,9 @@ class PriceApiService(
                                 category = PriceCategory.CRYPTO,
                                 priceTomans = priceTomans,
                                 change24hPercent = changePercent,
-                                high24h = effHigh,
-                                low24h = effLow,
-                                sparklinePoints = sparkline,
+                                high24h = high,
+                                low24h = low,
+                                sparklinePoints = emptyList(),
                                 priceUsd = priceUsd
                             )
                         )
@@ -290,65 +276,6 @@ class PriceApiService(
         if (value == null) return 0.0
         val str = value.toString().replace(",", "").replace(" ", "").trim()
         return str.toDoubleOrNull() ?: 0.0
-    }
-
-    /**
-     * Deterministic sparkline calculation based on real OHLC market data.
-     * ZERO random generator: same market metrics always produce the exact same realistic curve.
-     */
-    private fun generateDeterministicSparkline(
-        currentPrice: Double,
-        highPrice: Double,
-        lowPrice: Double,
-        changePercent: Double
-    ): List<Double> {
-        val openPrice = if (changePercent != -100.0) {
-            currentPrice / (1.0 + (changePercent / 100.0))
-        } else {
-            currentPrice
-        }
-
-        val effHigh = maxOf(openPrice, currentPrice, highPrice)
-        val effLow = minOf(openPrice, currentPrice, if (lowPrice > 0) lowPrice else currentPrice)
-
-        if (effHigh == effLow || effHigh <= 0.0) {
-            return List(8) { currentPrice }
-        }
-
-        val points = mutableListOf<Double>()
-        if (changePercent > 0.0) {
-            // Bullish: Open -> Slight dip -> Recovery -> Rally -> High peak -> Pullback -> Current
-            points.add(openPrice)
-            points.add(openPrice - (openPrice - effLow) * 0.6)
-            points.add(effLow)
-            points.add(openPrice + (currentPrice - openPrice) * 0.35)
-            points.add(openPrice + (currentPrice - openPrice) * 0.70)
-            points.add(effHigh)
-            points.add(effHigh - (effHigh - currentPrice) * 0.45)
-            points.add(currentPrice)
-        } else if (changePercent < 0.0) {
-            // Bearish: Open -> Slight bounce -> Drop -> Selloff -> Low bottom -> Rebound -> Current
-            points.add(openPrice)
-            points.add(openPrice + (effHigh - openPrice) * 0.6)
-            points.add(effHigh)
-            points.add(openPrice - (openPrice - currentPrice) * 0.35)
-            points.add(openPrice - (openPrice - currentPrice) * 0.70)
-            points.add(effLow)
-            points.add(effLow + (currentPrice - effLow) * 0.45)
-            points.add(currentPrice)
-        } else {
-            // Flat / sideways
-            val mid = (effHigh + effLow) / 2.0
-            points.add(currentPrice)
-            points.add(mid + (effHigh - mid) * 0.5)
-            points.add(effHigh)
-            points.add(mid)
-            points.add(effLow)
-            points.add(mid - (mid - effLow) * 0.5)
-            points.add(mid)
-            points.add(currentPrice)
-        }
-        return points
     }
 
     private data class ItemDef(

@@ -9,10 +9,10 @@ import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceItem
 import com.chand.app.data.remote.PriceApiService
 import com.chand.app.data.repository.PriceRepository
+import com.chand.app.data.repository.PriceSyncStatus
 import com.chand.app.widget.ChandLargeWidget
 import com.chand.app.widget.ChandMediumWidget
 import com.chand.app.widget.ChandSmallWidget
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,13 +42,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
-        // Auto-refresh prices periodically every 30 seconds while the app is active in foreground
         viewModelScope.launch {
-            while (true) {
-                delay(30_000)
-                repository.refreshPrices()
-                updateAllWidgets()
-            }
+            repository.refreshPrices()
+            updateAllWidgets()
         }
     }
 
@@ -61,10 +57,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isSearchActive = MutableStateFlow(false)
     val isSearchActive: StateFlow<Boolean> = _isSearchActive.asStateFlow()
 
-    private val _selectedItemForDetail = MutableStateFlow<PriceItem?>(null)
-    val selectedItemForDetail: StateFlow<PriceItem?> = _selectedItemForDetail.asStateFlow()
+    private val _selectedItemId = MutableStateFlow<String?>(null)
+    val selectedItemForDetail: StateFlow<PriceItem?> = combine(repository.prices, _selectedItemId) { prices, id ->
+        id?.let { selectedId -> prices.find { it.id.equals(selectedId, ignoreCase = true) } }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val isRefreshing: StateFlow<Boolean> = repository.isRefreshing
+    val syncStatus: StateFlow<PriceSyncStatus> = repository.syncStatus
 
     // Filtered list based on category and search text
     val displayedPrices: StateFlow<List<PriceItem>> = combine(
@@ -78,8 +77,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 PriceCategory.WATCHLIST -> item.isFavorite
                 else -> item.category == category
             }
-            val matchesQuery = query.isBlank() ||
-                    item.nameFa.contains(query.trim(), ignoreCase = true) ||
+            val normalizedQuery = normalizeSearch(query)
+            val matchesQuery = normalizedQuery.isBlank() ||
+                    normalizeSearch(item.nameFa).contains(normalizedQuery) ||
+                    normalizeSearch(item.effectiveNameEn).contains(normalizedQuery) ||
                     item.symbol.contains(query.trim(), ignoreCase = true)
 
             matchesCategory && matchesQuery
@@ -102,11 +103,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun openItemDetail(item: PriceItem) {
-        _selectedItemForDetail.value = item
+        _selectedItemId.value = item.id
     }
 
     fun closeItemDetail() {
-        _selectedItemForDetail.value = null
+        _selectedItemId.value = null
     }
 
     fun refreshPrices() {
@@ -141,6 +142,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
+        private fun normalizeSearch(value: String): String = value.trim().lowercase()
+            .replace('ي', 'ی').replace('ك', 'ک')
+
         fun formatTimestamp(timeMs: Long): String {
             if (timeMs <= 0) return ""
             val cal = java.util.Calendar.getInstance().apply { timeInMillis = timeMs }

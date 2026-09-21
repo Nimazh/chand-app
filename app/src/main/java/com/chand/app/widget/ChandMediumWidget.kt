@@ -45,7 +45,7 @@ class ChandMediumWidget : GlanceAppWidget() {
         val displayItems = selectedIds.mapNotNull { selId ->
             allItems.find { it.id.equals(selId, ignoreCase = true) }
         }.let { list ->
-            if (list.isEmpty()) allItems.take(3) else list.take(3)
+            if (list.isEmpty()) allItems.take(4) else list.take(4)
         }
 
         val themeId = pref.widgetThemeFlow.first()
@@ -55,12 +55,8 @@ class ChandMediumWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
-                MediumWidgetContent(
-                    items = displayItems,
-                    widgetTheme = widgetTheme,
-                    opacity = opacity,
-                    cornerRadius = cornerRadius
-                )
+                if (displayItems.isEmpty()) EmptyMediumWidgetContent(widgetTheme, opacity, cornerRadius)
+                else MediumWidgetContent(displayItems, widgetTheme, opacity, cornerRadius)
             }
         }
     }
@@ -81,7 +77,7 @@ class ChandMediumWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(bgColor)
-                .cornerRadius(if (cornerRadius > 20) cornerRadius.dp else 22.dp)
+                .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
                 .clickable(actionStartActivity<MainActivity>())
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
@@ -179,6 +175,17 @@ class ChandMediumWidget : GlanceAppWidget() {
                     fontWeight = FontWeight.Bold
                 )
             )
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun EmptyMediumWidgetContent(widgetTheme: WidgetTheme, opacity: Int, cornerRadius: Int) {
+        Box(
+            modifier = GlanceModifier.fillMaxSize().background(widgetTheme.resolveBackgroundColor(opacity))
+                .cornerRadius(cornerRadius.coerceIn(12, 28).dp).clickable(actionStartActivity<MainActivity>()).padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("قیمتی برای نمایش نیست", style = TextStyle(color = ColorProvider(widgetTheme.textColor), fontSize = 13.sp))
         }
     }
 }

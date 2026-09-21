@@ -11,7 +11,7 @@ data class PriceItem(
     val change24hPercent: Double,
     val high24h: Long = 0,
     val low24h: Long = 0,
-    val lastUpdatedEpochMs: Long = System.currentTimeMillis(),
+    val lastUpdatedEpochMs: Long = 0L,
     val isFavorite: Boolean = false,
     val sparklinePoints: List<Double> = emptyList(),
     val priceUsd: Double? = null,
@@ -135,7 +135,7 @@ data class PriceItem(
         get() = if (isUsd) "دلار" else "تومان"
 
     val effectiveUsdPrice: Double
-        get() = priceUsd ?: (if (priceTomans > 0) priceTomans.toDouble() / 229180.0 else 0.0)
+        get() = priceUsd ?: 0.0
 
     val formattedPrice: String
         get() {
@@ -157,28 +157,30 @@ data class PriceItem(
     val formattedHigh: String
         get() {
             return if (isUsd) {
-                val usd = if (high24h > 0) high24h.toDouble() / 229180.0 else effectiveUsdPrice * 1.015
+                val usd = if (high24h > 0 && priceTomans > 0) high24h.toDouble() * effectiveUsdPrice / priceTomans else 0.0
                 when {
                     usd >= 1000.0 -> "${String.format(Locale.US, "%,d", usd.toLong())} $unitText"
                     usd >= 1.0 -> "${String.format(Locale.US, "%,.2f", usd)} $unitText"
-                    else -> "${String.format(Locale.US, "%,.4f", usd)} $unitText"
+                    usd > 0 -> "${String.format(Locale.US, "%,.4f", usd)} $unitText"
+                    else -> "—"
                 }
             } else {
-                "${String.format(Locale.US, "%,d", high24h)} $unitText"
+                if (high24h > 0) "${String.format(Locale.US, "%,d", high24h)} $unitText" else "—"
             }
         }
 
     val formattedLow: String
         get() {
             return if (isUsd) {
-                val usd = if (low24h > 0) low24h.toDouble() / 229180.0 else effectiveUsdPrice * 0.985
+                val usd = if (low24h > 0 && priceTomans > 0) low24h.toDouble() * effectiveUsdPrice / priceTomans else 0.0
                 when {
                     usd >= 1000.0 -> "${String.format(Locale.US, "%,d", usd.toLong())} $unitText"
                     usd >= 1.0 -> "${String.format(Locale.US, "%,.2f", usd)} $unitText"
-                    else -> "${String.format(Locale.US, "%,.4f", usd)} $unitText"
+                    usd > 0 -> "${String.format(Locale.US, "%,.4f", usd)} $unitText"
+                    else -> "—"
                 }
             } else {
-                "${String.format(Locale.US, "%,d", low24h)} $unitText"
+                if (low24h > 0) "${String.format(Locale.US, "%,d", low24h)} $unitText" else "—"
             }
         }
 
@@ -197,6 +199,7 @@ data class PriceItem(
         get() {
             val arrow = if (change24hPercent >= 0) "↑" else "↓"
             val absPercent = Math.abs(change24hPercent)
+            if (isUsd) return String.format(Locale.US, "%s%.2f%%", arrow, absPercent)
             val amt = changeAmount ?: 0L
             return if (amt != 0L) {
                 val absAmt = Math.abs(amt)
@@ -208,7 +211,8 @@ data class PriceItem(
                 }
             } else {
                 // If amount not explicitly set, calculate from percent and current price
-                val computedAmt = (priceTomans * absPercent / 100.0).toLong()
+                val previousPrice = if (absPercent < 100.0) priceTomans / (1.0 + absPercent / 100.0) else 0.0
+                val computedAmt = Math.abs(priceTomans - previousPrice).toLong()
                 if (computedAmt >= 10000) {
                     val kVal = computedAmt / 1000.0
                     String.format(Locale.US, "%s%.2fK", arrow, kVal)
@@ -228,8 +232,10 @@ data class PriceItem(
         get() {
             val arrow = if (change24hPercent >= 0) "↑" else "↓"
             val absPercent = Math.abs(change24hPercent)
+            if (isUsd) return String.format(Locale.US, "%s%.2f%%", arrow, absPercent)
             val amt = changeAmount ?: 0L
-            val absAmt = if (amt != 0L) Math.abs(amt) else (priceTomans * absPercent / 100.0).toLong()
+            val previousPrice = if (absPercent < 100.0) priceTomans / (1.0 + absPercent / 100.0) else 0.0
+            val absAmt = if (amt != 0L) Math.abs(amt) else Math.abs(priceTomans - previousPrice).toLong()
             return when {
                 absAmt >= 1_000_000 -> {
                     val mVal = absAmt / 1_000_000.0

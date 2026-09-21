@@ -13,6 +13,7 @@ import androidx.glance.LocalSize
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
@@ -44,9 +45,10 @@ class ChandSmallWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val pref = PreferencesManager(context)
-        val selectedId = pref.smallWidgetItemFlow.first()
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        val selectedId = pref.smallWidgetItemFlow(appWidgetId).first()
         val allItems = pref.cachedPricesFlow.first()
-        val item = allItems.find { it.id.equals(selectedId, ignoreCase = true) } ?: allItems.first()
+        val item = allItems.find { it.id.equals(selectedId, ignoreCase = true) } ?: allItems.firstOrNull()
 
         val themeId = pref.widgetThemeFlow.first()
         val opacity = pref.widgetOpacityFlow.first()
@@ -55,12 +57,8 @@ class ChandSmallWidget : GlanceAppWidget() {
 
         provideContent {
             GlanceTheme {
-                SmallWidgetContent(
-                    item = item,
-                    widgetTheme = widgetTheme,
-                    opacity = opacity,
-                    cornerRadius = cornerRadius
-                )
+                if (item == null) EmptySmallWidgetContent(widgetTheme, opacity, cornerRadius)
+                else SmallWidgetContent(item, widgetTheme, opacity, cornerRadius)
             }
         }
     }
@@ -102,7 +100,7 @@ class ChandSmallWidget : GlanceAppWidget() {
         val priceFontSize = if (isCompact) 23.sp else 27.sp
         val usdFontSize = if (isCompact) 13.sp else 15.sp
 
-        val effectiveCorner = if (cornerRadius > 20) cornerRadius.dp else 24.dp
+        val effectiveCorner = cornerRadius.coerceIn(12, 28).dp
 
         // Outer transparent container filling the launcher cell and centering the square card
         Box(
@@ -208,6 +206,23 @@ class ChandSmallWidget : GlanceAppWidget() {
                     }
                 }
             }
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun EmptySmallWidgetContent(widgetTheme: WidgetTheme, opacity: Int, cornerRadius: Int) {
+        Box(
+            modifier = GlanceModifier.fillMaxSize()
+                .background(widgetTheme.resolveBackgroundColor(opacity))
+                .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
+                .clickable(actionStartActivity<MainActivity>())
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "برای دریافت قیمت\nبرنامه را باز کنید",
+                style = TextStyle(color = ColorProvider(widgetTheme.textColor), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            )
         }
     }
 }
