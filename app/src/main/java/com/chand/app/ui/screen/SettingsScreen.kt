@@ -105,6 +105,9 @@ fun SettingsScreen(
 
     val prices by viewModel.repository.prices.collectAsState()
     val smallItemPref by prefManager.smallWidgetItemFlow().collectAsState(initial = "usd")
+    val mediumItemIds by prefManager.mediumWidgetItemsFlow.collectAsState(
+        initial = PreferencesManager.DEFAULT_MEDIUM_ITEMS
+    )
 
     val widgetThemePref by prefManager.widgetThemeFlow.collectAsState(initial = PreferencesManager.DEFAULT_WIDGET_THEME)
     val widgetOpacityPref by prefManager.widgetOpacityFlow.collectAsState(initial = PreferencesManager.DEFAULT_WIDGET_OPACITY)
@@ -749,6 +752,95 @@ fun SettingsScreen(
                                         .padding(horizontal = 16.dp)
                                         .height(0.6.dp)
                                         .background(AppleCardBorder)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 5. Choose and order items for the Medium Widget. The selection order is
+                // also the display order, so this stays usable without drag-and-drop gestures.
+                Text(
+                    text = "آیتم‌ها و ترتیب ویجت متوسط (Medium)",
+                    color = AppleTextPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "حداکثر ۴ آیتم؛ ترتیب انتخاب شما، ترتیب نمایش ویجت است.",
+                    color = AppleTextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, cardShape, ambientColor = Color(0x06000000), spotColor = Color(0x0A000000))
+                        .clip(cardShape)
+                        .background(AppleCardBackground)
+                        .border(0.8.dp, AppleCardBorder, cardShape)
+                ) {
+                    Column {
+                        prices.take(8).forEachIndexed { index, item ->
+                            val selectedPosition = mediumItemIds.indexOfFirst {
+                                it.equals(item.id, ignoreCase = true)
+                            }
+                            val isSelected = selectedPosition >= 0
+                            val canToggle = !isSelected || mediumItemIds.size > 1
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .then(
+                                        if (canToggle) Modifier.clickable {
+                                            performHaptic()
+                                            val updatedIds = if (isSelected) {
+                                                mediumItemIds.filterNot { it.equals(item.id, ignoreCase = true) }
+                                            } else {
+                                                (mediumItemIds + item.id).distinct().take(4)
+                                            }
+                                            scope.launch {
+                                                prefManager.setMediumWidgetItems(updatedIds)
+                                                ChandMediumWidget().updateAll(context)
+                                            }
+                                        } else Modifier
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Image(
+                                        painter = painterResource(id = item.iconResId),
+                                        contentDescription = item.effectiveNameEn,
+                                        modifier = Modifier.size(24.dp).clip(CircleShape)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = "${item.effectiveNameEn} (${item.symbol})",
+                                        color = if (isSelected) AppleBlue else AppleTextPrimary,
+                                        fontSize = 14.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                                if (isSelected) {
+                                    Text(
+                                        text = "اولویت ${selectedPosition + 1}",
+                                        color = AppleBlue,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+
+                            if (index < prices.take(8).size - 1) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                                        .height(0.6.dp).background(AppleCardBorder)
                                 )
                             }
                         }
