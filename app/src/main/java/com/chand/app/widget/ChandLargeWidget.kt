@@ -33,17 +33,18 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.model.PriceItem
+import com.chand.app.data.model.PriceCatalog
 import com.chand.app.ui.MainActivity
-import kotlinx.coroutines.flow.first
 
 class ChandLargeWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val pref = PreferencesManager(context)
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
-        val allItems = pref.cachedPricesFlow.first()
-        val favs = pref.favoritesFlow.first()
-        val selectedIds = pref.largeWidgetItemsFlow(appWidgetId).first()
+        val snapshot = pref.readWidgetSnapshot(appWidgetId)
+        val allItems = PriceCatalog.withQuotes(snapshot.prices)
+        val favs = snapshot.favorites
+        val selectedIds = snapshot.largeItemIds
 
         val items = if (selectedIds.isNotEmpty()) {
             selectedIds.mapNotNull { selectedId -> allItems.find { it.id.equals(selectedId, ignoreCase = true) } }
@@ -51,10 +52,9 @@ class ChandLargeWidget : GlanceAppWidget() {
             allItems.filter { it.id in favs }.ifEmpty { allItems }.take(6)
         }
 
-        val themeId = pref.widgetThemeFlow.first()
-        val opacity = pref.widgetOpacityFlow.first()
-        val cornerRadius = pref.widgetCornerRadiusFlow.first()
-        val widgetTheme = WidgetTheme.fromId(themeId)
+        val opacity = snapshot.opacity
+        val cornerRadius = snapshot.cornerRadius
+        val widgetTheme = WidgetTheme.fromId(snapshot.themeId)
 
         provideContent {
             GlanceTheme {
@@ -169,7 +169,7 @@ class ChandLargeWidget : GlanceAppWidget() {
                                 fontWeight = FontWeight.Bold
                             )
                         )
-                        if (item.isUsd) {
+                        if (item.isUsd && item.priceTomans > 0) {
                             Spacer(modifier = GlanceModifier.width(2.dp))
                             Text(
                                 text = "$",

@@ -139,6 +139,7 @@ data class PriceItem(
 
     val formattedPrice: String
         get() {
+            if (priceTomans <= 0) return "—"
             return if (isUsd) {
                 val usd = effectiveUsdPrice
                 when {
@@ -152,7 +153,7 @@ data class PriceItem(
         }
 
     val formattedPriceWithUnit: String
-        get() = "$formattedPrice $unitText"
+        get() = if (priceTomans <= 0) "قیمت در دسترس نیست" else "$formattedPrice $unitText"
 
     val formattedHigh: String
         get() {
@@ -197,6 +198,7 @@ data class PriceItem(
      */
     val arrowChangeFormatted: String
         get() {
+            if (priceTomans <= 0) return "—"
             val arrow = if (change24hPercent >= 0) "↑" else "↓"
             val absPercent = Math.abs(change24hPercent)
             if (isUsd) return String.format(Locale.US, "%s%.2f%%", arrow, absPercent)
@@ -230,6 +232,7 @@ data class PriceItem(
      */
     val widgetArrowChangeFormatted: String
         get() {
+            if (priceTomans <= 0) return "—"
             val arrow = if (change24hPercent >= 0) "↑" else "↓"
             val absPercent = Math.abs(change24hPercent)
             if (isUsd) return String.format(Locale.US, "%s%.2f%%", arrow, absPercent)

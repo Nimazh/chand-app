@@ -11,9 +11,22 @@ import com.chand.app.data.model.PriceItem
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "chand_settings")
+
+data class WidgetSnapshot(
+    val prices: List<PriceItem>,
+    val favorites: Set<String>,
+    val smallItemId: String,
+    val mediumItemIds: List<String>,
+    val largeItemIds: List<String>,
+    val themeId: String,
+    val opacity: Int,
+    val cornerRadius: Int
+)
 
 class PreferencesManager(private val context: Context) {
     companion object {
@@ -75,15 +88,28 @@ class PreferencesManager(private val context: Context) {
     val appThemeModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_THEME_MODE] ?: DEFAULT_APP_THEME_MODE }
     val lastUpdateTimeFlow: Flow<Long> = context.dataStore.data.map { it[KEY_LAST_UPDATE_TIME] ?: 0L }
 
-    val cachedPricesFlow: Flow<List<PriceItem>> = context.dataStore.data.map { prefs ->
-        val json = prefs[KEY_CACHED_PRICES_JSON] ?: return@map emptyList()
-        try {
-            val type = object : TypeToken<List<PriceItem>>() {}.type
-            gson.fromJson<List<PriceItem>>(json, type)
-                ?.filter { it.id.isNotBlank() && it.priceTomans > 0 } ?: emptyList()
-        } catch (_: Exception) {
-            emptyList()
-        }
+    val cachedPricesFlow: Flow<List<PriceItem>> = context.dataStore.data
+        .map { prefs -> prefs[KEY_CACHED_PRICES_JSON] }
+        .distinctUntilChanged()
+        .map(::parseCachedPrices)
+
+    /** Reads the entire widget state from one DataStore snapshot for a fast, consistent render. */
+    suspend fun readWidgetSnapshot(appWidgetId: Int): WidgetSnapshot {
+        val prefs = context.dataStore.data.first()
+        val smallKey = stringPreferencesKey(WIDGET_SMALL_ITEM_PREFIX + appWidgetId)
+        val mediumKey = stringPreferencesKey(WIDGET_MEDIUM_ITEMS_PREFIX + appWidgetId)
+        val largeKey = stringPreferencesKey(WIDGET_LARGE_ITEMS_PREFIX + appWidgetId)
+        return WidgetSnapshot(
+            prices = parseCachedPrices(prefs[KEY_CACHED_PRICES_JSON]),
+            favorites = prefs[KEY_FAVORITES] ?: DEFAULT_FAVORITES,
+            smallItemId = prefs[smallKey] ?: prefs[KEY_WIDGET_SMALL_ITEM] ?: "usd",
+            mediumItemIds = parseAssetIds(prefs[mediumKey] ?: prefs[KEY_WIDGET_MEDIUM_ITEMS], 4)
+                .ifEmpty { DEFAULT_MEDIUM_ITEMS },
+            largeItemIds = parseAssetIds(prefs[largeKey], 6),
+            themeId = prefs[KEY_WIDGET_THEME] ?: DEFAULT_WIDGET_THEME,
+            opacity = prefs[KEY_WIDGET_OPACITY] ?: DEFAULT_WIDGET_OPACITY,
+            cornerRadius = prefs[KEY_WIDGET_CORNER_RADIUS] ?: DEFAULT_WIDGET_CORNER_RADIUS
+        )
     }
 
     suspend fun saveCachedPrices(items: List<PriceItem>) {
@@ -143,6 +169,17 @@ class PreferencesManager(private val context: Context) {
 
     private fun parseAssetIds(value: String?, maxItems: Int): List<String> =
         value?.split(',')?.let { normalizeAssetIds(it, maxItems) } ?: emptyList()
+
+    private fun parseCachedPrices(json: String?): List<PriceItem> {
+        if (json == null) return emptyList()
+        return try {
+            val type = object : TypeToken<List<PriceItem>>() {}.type
+            gson.fromJson<List<PriceItem>>(json, type)
+                ?.filter { it.id.isNotBlank() && it.priceTomans > 0 } ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     private fun normalizeAssetIds(itemIds: List<String>, maxItems: Int): List<String> =
         itemIds.map { it.trim().lowercase() }

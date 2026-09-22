@@ -1,6 +1,9 @@
 package com.chand.app.ui.screen
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import android.view.WindowManager
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -66,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.updateAll
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.model.PriceCategory
+import com.chand.app.data.model.PriceCatalog
 import com.chand.app.data.model.PriceItem
 import com.chand.app.ui.components.LiquidGlassButton
 import com.chand.app.ui.components.LiquidGlassButtonStyle
@@ -80,8 +85,13 @@ import com.chand.app.ui.theme.AppleTextSecondary
 import com.chand.app.ui.theme.AppleTextTertiary
 import com.chand.app.widget.ChandWidgetUpdater
 import com.chand.app.widget.ChandMediumWidget
+import com.chand.app.widget.ChandMediumWidgetReceiver
+import com.chand.app.widget.ChandLargeWidgetReceiver
 import com.chand.app.widget.ChandSmallWidget
+import com.chand.app.widget.ChandSmallWidgetReceiver
+import com.chand.app.widget.ChandWidgetType
 import com.chand.app.widget.WidgetTheme
+import com.chand.app.widget.WidgetConfigActivity
 import kotlinx.coroutines.launch
 
 @Composable
@@ -108,9 +118,20 @@ fun SettingsScreen(
     }
 
     val prices by viewModel.repository.prices.collectAsState()
-    val smallItemPref by prefManager.smallWidgetItemFlow().collectAsState(initial = "usd")
+    val widgetManager = remember(context) { AppWidgetManager.getInstance(context) }
+    val installedSmallWidgetIds = remember(context) {
+        widgetManager.getAppWidgetIds(ComponentName(context, ChandSmallWidgetReceiver::class.java)).toList()
+    }
+    val installedMediumWidgetIds = remember(context) {
+        widgetManager.getAppWidgetIds(ComponentName(context, ChandMediumWidgetReceiver::class.java)).toList()
+    }
+    var editedSmallWidgetId by remember { mutableStateOf(installedSmallWidgetIds.firstOrNull()) }
+    var editedMediumWidgetId by remember { mutableStateOf(installedMediumWidgetIds.firstOrNull()) }
+    val smallItemFlow = remember(editedSmallWidgetId) { prefManager.smallWidgetItemFlow(editedSmallWidgetId) }
+    val smallItemPref by smallItemFlow.collectAsState(initial = "usd")
     val foregroundRefreshMinutes by viewModel.foregroundRefreshMinutes.collectAsState()
-    val mediumItemIds by prefManager.mediumWidgetItemsFlow.collectAsState(
+    val mediumItemsFlow = remember(editedMediumWidgetId) { prefManager.mediumWidgetItemsFlow(editedMediumWidgetId) }
+    val mediumItemIds by mediumItemsFlow.collectAsState(
         initial = PreferencesManager.DEFAULT_MEDIUM_ITEMS
     )
 
@@ -124,12 +145,32 @@ fun SettingsScreen(
     var isStyleSaved by remember { mutableStateOf(false) }
     var widgetAssetQuery by remember { mutableStateOf("") }
     var widgetAssetCategory by remember { mutableStateOf(PriceCategory.ALL) }
+    var showSmallAssetChoices by remember { mutableStateOf(false) }
     val normalizedWidgetQuery = remember(widgetAssetQuery) { widgetAssetQuery.normalizeForWidgetSearch() }
-    val filteredWidgetAssets = remember(prices, normalizedWidgetQuery, widgetAssetCategory) {
-        prices.filter { item ->
+    val allWidgetAssets = remember(prices) { PriceCatalog.withQuotes(prices) }
+    val filteredWidgetAssets = remember(allWidgetAssets, normalizedWidgetQuery, widgetAssetCategory) {
+        allWidgetAssets.filter { item ->
             (widgetAssetCategory == PriceCategory.ALL || item.category == widgetAssetCategory) &&
                 (normalizedWidgetQuery.isBlank() || listOf(item.nameFa, item.effectiveNameEn, item.symbol)
                     .any { it.normalizeForWidgetSearch().contains(normalizedWidgetQuery) })
+        }
+    }
+    val smallWidgetChoices = if (showSmallAssetChoices) allWidgetAssets else
+        allWidgetAssets.filter { it.id.equals(smallItemPref, ignoreCase = true) }
+    val installedMultiWidgets = remember(context) {
+        listOf(
+            "متوسط" to ChandMediumWidgetReceiver::class.java,
+            "بزرگ" to ChandLargeWidgetReceiver::class.java
+        ).flatMap { (label, receiver) ->
+            widgetManager.getAppWidgetIds(ComponentName(context, receiver)).map { id -> label to id }
+        }
+    }
+    val saveMediumItems: (List<String>) -> Unit = { updatedIds ->
+        val widgetId = editedMediumWidgetId
+        scope.launch {
+            prefManager.setMediumWidgetItems(updatedIds, widgetId)
+            if (widgetId == null) ChandMediumWidget().updateAll(context)
+            else ChandWidgetUpdater.updateOne(context, widgetId, ChandWidgetType.MEDIUM)
         }
     }
 
@@ -765,53 +806,37 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // 4. Choose Item for Small Widget
                 Text(
-                    text = "جست‌وجو و فیلتر دارایی‌های ویجت",
+                    text = if (editedSmallWidgetId == null) "پیش‌فرض ویجت تکی جدید" else "انتخاب دارایی ویجت تکی",
                     color = AppleTextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = widgetAssetQuery,
-                    onValueChange = { widgetAssetQuery = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text("جست‌وجوی ارز، کریپتو یا طلا") },
-                    placeholder = { Text("مثلاً دلار، بیت‌کوین یا طلای ۱۸") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AppleBlue,
-                        focusedLabelColor = AppleBlue,
-                        unfocusedBorderColor = AppleCardBorder
-                    )
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(PriceCategory.ALL, PriceCategory.CURRENCY, PriceCategory.CRYPTO, PriceCategory.GOLD).forEach { category ->
-                        val isSelected = widgetAssetCategory == category
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) AppleSegmentBg else AppleBackground)
-                                .border(1.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(10.dp))
-                                .clickable { widgetAssetCategory = category }
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(category.titleFa, color = if (isSelected) AppleBlue else AppleTextSecondary, fontSize = 11.sp)
+                if (installedSmallWidgetIds.size > 1) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        installedSmallWidgetIds.forEach { id ->
+                            Text(
+                                text = "ویجت $id",
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (editedSmallWidgetId == id) AppleSegmentBg else AppleCardBackground)
+                                    .clickable { editedSmallWidgetId = id }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                color = if (editedSmallWidgetId == id) AppleBlue else AppleTextSecondary,
+                                fontSize = 12.sp
+                            )
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // 4. Choose Item for Small Widget
                 Text(
-                    text = "انتخاب دارایی برای ویجت تکی (Small)",
-                    color = AppleTextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    text = if (showSmallAssetChoices) "بستن فهرست ویجت تکی" else "تغییر دارایی ویجت تکی",
+                    modifier = Modifier.clickable { showSmallAssetChoices = !showSmallAssetChoices }.padding(vertical = 8.dp),
+                    color = AppleBlue,
+                    fontSize = 13.sp
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -824,16 +849,18 @@ fun SettingsScreen(
                         .border(0.8.dp, AppleCardBorder, cardShape)
                 ) {
                     Column {
-                        filteredWidgetAssets.forEachIndexed { index, item ->
+                        smallWidgetChoices.forEachIndexed { index, item ->
                             val isSelected = item.id.equals(smallItemPref, ignoreCase = true)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
                                         performHaptic()
+                                        val widgetId = editedSmallWidgetId
                                         scope.launch {
-                                            prefManager.setSmallWidgetItem(item.id)
-                                            ChandSmallWidget().updateAll(context)
+                                            prefManager.setSmallWidgetItem(item.id, widgetId)
+                                            if (widgetId == null) ChandSmallWidget().updateAll(context)
+                                            else ChandWidgetUpdater.updateOne(context, widgetId, ChandWidgetType.SMALL)
                                         }
                                     }
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -866,7 +893,7 @@ fun SettingsScreen(
                                 }
                             }
 
-                            if (index < filteredWidgetAssets.size - 1) {
+                            if (index < smallWidgetChoices.size - 1) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -884,17 +911,95 @@ fun SettingsScreen(
                 // 5. Choose and order items for the Medium Widget. The selection order is
                 // also the display order, so this stays usable without drag-and-drop gestures.
                 Text(
-                    text = "آیتم‌ها و ترتیب ویجت متوسط (Medium)",
+                    text = if (editedMediumWidgetId == null) "پیش‌فرض ویجت متوسط جدید" else "آیتم‌ها و ترتیب ویجت متوسط",
                     color = AppleTextPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
+                if (installedMediumWidgetIds.size > 1) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        installedMediumWidgetIds.forEach { id ->
+                            Text(
+                                text = "ویجت $id",
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (editedMediumWidgetId == id) AppleSegmentBg else AppleCardBackground)
+                                    .clickable { editedMediumWidgetId = id }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                color = if (editedMediumWidgetId == id) AppleBlue else AppleTextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "حداکثر ۴ آیتم؛ ترتیب انتخاب شما، ترتیب نمایش ویجت است.",
                     color = AppleTextSecondary,
                     fontSize = 12.sp
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = widgetAssetQuery,
+                    onValueChange = { widgetAssetQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("جست‌وجوی ارز، کریپتو یا طلا") },
+                    placeholder = { Text("مثلاً دلار، بیت‌کوین یا طلای ۱۸") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppleBlue,
+                        focusedLabelColor = AppleBlue,
+                        unfocusedBorderColor = AppleCardBorder
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(PriceCategory.ALL, PriceCategory.CURRENCY, PriceCategory.CRYPTO, PriceCategory.GOLD).forEach { category ->
+                        val isSelected = widgetAssetCategory == category
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) AppleSegmentBg else AppleBackground)
+                                .border(1.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(10.dp))
+                                .clickable { widgetAssetCategory = category }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(category.titleFa, color = if (isSelected) AppleBlue else AppleTextSecondary, fontSize = 11.sp)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text("ترتیب فعلی", color = AppleTextSecondary, fontSize = 12.sp)
+                mediumItemIds.forEachIndexed { position, id ->
+                    val item = allWidgetAssets.find { it.id.equals(id, ignoreCase = true) }
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${position + 1}. ${item?.nameFa ?: id}",
+                            modifier = Modifier.weight(1f),
+                            color = AppleTextPrimary,
+                            fontSize = 13.sp
+                        )
+                        IconButton(
+                            onClick = {
+                                saveMediumItems(mediumItemIds.move(position, position - 1))
+                            },
+                            enabled = position > 0
+                        ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "انتقال به بالا", tint = AppleBlue) }
+                        IconButton(
+                            onClick = {
+                                saveMediumItems(mediumItemIds.move(position, position + 1))
+                            },
+                            enabled = position < mediumItemIds.lastIndex
+                        ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "انتقال به پایین", tint = AppleBlue) }
+                    }
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Box(
@@ -906,6 +1011,14 @@ fun SettingsScreen(
                         .border(0.8.dp, AppleCardBorder, cardShape)
                 ) {
                     Column {
+                        if (filteredWidgetAssets.isEmpty()) {
+                            Text(
+                                text = "دارایی مطابق جست‌وجو پیدا نشد.",
+                                modifier = Modifier.padding(16.dp),
+                                color = AppleTextSecondary,
+                                fontSize = 13.sp
+                            )
+                        }
                         filteredWidgetAssets.forEachIndexed { index, item ->
                             val selectedPosition = mediumItemIds.indexOfFirst {
                                 it.equals(item.id, ignoreCase = true)
@@ -924,10 +1037,7 @@ fun SettingsScreen(
                                             } else {
                                                 (mediumItemIds + item.id).distinct().take(4)
                                             }
-                                            scope.launch {
-                                                prefManager.setMediumWidgetItems(updatedIds)
-                                                ChandMediumWidget().updateAll(context)
-                                            }
+                                            saveMediumItems(updatedIds)
                                         } else Modifier
                                     )
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -949,42 +1059,12 @@ fun SettingsScreen(
                                     )
                                 }
                                 if (isSelected) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "اولویت ${selectedPosition + 1}",
-                                            color = AppleBlue,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                        IconButton(
-                                            onClick = {
-                                                scope.launch {
-                                                    prefManager.setMediumWidgetItems(
-                                                        mediumItemIds.move(selectedPosition, selectedPosition - 1)
-                                                    )
-                                                    ChandMediumWidget().updateAll(context)
-                                                }
-                                            },
-                                            enabled = selectedPosition > 0,
-                                            modifier = Modifier.size(30.dp)
-                                        ) {
-                                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "انتقال به بالا", tint = AppleBlue)
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                scope.launch {
-                                                    prefManager.setMediumWidgetItems(
-                                                        mediumItemIds.move(selectedPosition, selectedPosition + 1)
-                                                    )
-                                                    ChandMediumWidget().updateAll(context)
-                                                }
-                                            },
-                                            enabled = selectedPosition < mediumItemIds.lastIndex,
-                                            modifier = Modifier.size(30.dp)
-                                        ) {
-                                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "انتقال به پایین", tint = AppleBlue)
-                                        }
-                                    }
+                                    Text(
+                                        text = "اولویت ${selectedPosition + 1}",
+                                        color = AppleBlue,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
 
@@ -999,6 +1079,42 @@ fun SettingsScreen(
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
+
+                if (installedMultiWidgets.isNotEmpty()) {
+                    Text(
+                        text = "ویرایش جداگانهٔ ویجت‌های صفحهٔ اصلی",
+                        color = AppleTextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "آیتم‌ها و ترتیب هر ویجت را جداگانه انتخاب کنید.",
+                        color = AppleTextSecondary,
+                        fontSize = 12.sp
+                    )
+                    installedMultiWidgets.forEach { (label, id) ->
+                        Text(
+                            text = "ویرایش ویجت $label ($id)",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .clip(cardShape)
+                                .background(AppleCardBackground)
+                                .border(0.8.dp, AppleCardBorder, cardShape)
+                                .clickable {
+                                    context.startActivity(
+                                        Intent(context, WidgetConfigActivity::class.java)
+                                            .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+                                    )
+                                }
+                                .padding(16.dp),
+                            color = AppleBlue,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(36.dp))
             }

@@ -19,11 +19,10 @@ class WidgetRefreshAction : ActionCallback {
         withContext(Dispatchers.IO) {
             val pref = PreferencesManager(context)
             val api = PriceApiService()
-            val repo = PriceRepository(api, pref)
-            repo.refreshPrices()
+            val repo = PriceRepository(api, pref, observeCache = false)
+            val result = repo.refreshPrices(force = true)
 
-            // Update all widgets
-            ChandWidgetUpdater.updateAll(context)
+            if (result.getOrNull()?.pricesChanged == true) ChandWidgetUpdater.updateAll(context)
         }
     }
 }

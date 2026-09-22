@@ -1,6 +1,7 @@
 package com.chand.app.ui.screen
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.chand.app.data.local.PreferencesManager
@@ -9,9 +10,6 @@ import com.chand.app.data.model.PriceItem
 import com.chand.app.data.remote.PriceApiService
 import com.chand.app.data.repository.PriceRepository
 import com.chand.app.data.repository.PriceSyncStatus
-import com.chand.app.widget.ChandLargeWidget
-import com.chand.app.widget.ChandMediumWidget
-import com.chand.app.widget.ChandSmallWidget
 import com.chand.app.widget.ChandWidgetUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +22,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -117,7 +116,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshPrices() {
         viewModelScope.launch {
-            refreshPricesAndWidgets()
+            refreshPricesAndWidgets(force = true)
         }
     }
 
@@ -126,9 +125,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (foregroundRefreshJob?.isActive == true) return
         foregroundRefreshJob = viewModelScope.launch {
             preferencesManager.foregroundRefreshMinutesFlow.collectLatest { minutes ->
+                val intervalMs = minutes * 60_000L
                 while (true) {
+                    val lastSync = preferencesManager.lastUpdateTimeFlow.first()
+                    val elapsed = System.currentTimeMillis() - lastSync
+                    if (lastSync > 0 && elapsed in 0 until intervalMs) {
+                        delay(intervalMs - elapsed)
+                    }
                     refreshPricesAndWidgets()
-                    delay(minutes * 60_000L)
+                    delay(intervalMs)
                 }
             }
         }
@@ -162,12 +167,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val context = getApplication<Application>()
             ChandWidgetUpdater.updateAll(context)
-        } catch (_: Exception) {}
+        } catch (error: Exception) {
+            Log.w("MainViewModel", "Widget update failed", error)
+        }
     }
 
-    private suspend fun refreshPricesAndWidgets() {
-        val result = repository.refreshPrices()
-        if (result.isSuccess) updateAllWidgets()
+    private suspend fun refreshPricesAndWidgets(force: Boolean = false) {
+        val outcome = repository.refreshPrices(force).getOrNull()
+        if (outcome?.pricesChanged == true) updateAllWidgets()
+    }
+
+    override fun onCleared() {
+        stopForegroundAutoRefresh()
+        repository.close()
+        super.onCleared()
     }
 
     companion object {

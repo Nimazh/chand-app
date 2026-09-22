@@ -6,11 +6,14 @@ import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceItem
 import com.chand.app.data.remote.PriceApiService
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -19,13 +22,16 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 enum class PriceSyncStatus { IDLE, REFRESHING, SUCCESS, STALE, ERROR }
+data class PriceRefreshOutcome(val items: List<PriceItem>, val pricesChanged: Boolean)
 
 class PriceRepository(
     private val apiService: PriceApiService,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    observeCache: Boolean = true
 ) {
     companion object {
         private const val TAG = "PriceRepository"
+        private const val MIN_AUTO_REFRESH_GAP_MS = 30_000L
         private val refreshMutex = Mutex()
         private val expectedCryptoIds = setOf("usdt", "btc", "eth", "ton", "trx", "sol", "doge")
     }
@@ -35,34 +41,42 @@ class PriceRepository(
     val prices: StateFlow<List<PriceItem>> = _prices.asStateFlow()
     private val _syncStatus = MutableStateFlow(PriceSyncStatus.IDLE)
     val syncStatus: StateFlow<PriceSyncStatus> = _syncStatus.asStateFlow()
-    val isRefreshing: StateFlow<Boolean> = MutableStateFlow(false).also { output ->
-        repositoryScope.launch { syncStatus.collect { output.value = it == PriceSyncStatus.REFRESHING } }
-    }.asStateFlow()
-
-    private val priceHistoryMap = mutableMapOf<String, MutableList<Double>>()
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     init {
-        repositoryScope.launch {
-            preferencesManager.cachedPricesFlow.collect { cached ->
+        if (observeCache) repositoryScope.launch {
+            combine(
+                preferencesManager.cachedPricesFlow,
+                preferencesManager.favoritesFlow,
+                preferencesManager.lastUpdateTimeFlow
+            ) { cached, favorites, lastSync ->
+                cached.map { it.copy(isFavorite = it.id in favorites) } to lastSync
+            }.collect { (cached, lastSync) ->
                 if (cached.isNotEmpty()) {
                     _prices.value = cached
-                    cached.forEach { item ->
-                        if (item.sparklinePoints.isNotEmpty()) priceHistoryMap[item.id] = item.sparklinePoints.toMutableList()
+                    if (_syncStatus.value == PriceSyncStatus.IDLE) {
+                        setStatus(if (System.currentTimeMillis() - lastSync in 0 until 15 * 60_000L) {
+                            PriceSyncStatus.SUCCESS
+                        } else {
+                            PriceSyncStatus.STALE
+                        })
                     }
-                    if (_syncStatus.value == PriceSyncStatus.IDLE) _syncStatus.value = PriceSyncStatus.STALE
                 }
             }
         }
     }
 
-    suspend fun refreshPrices(): Result<List<PriceItem>> = withContext(Dispatchers.IO) {
+    suspend fun refreshPrices(force: Boolean = false): Result<PriceRefreshOutcome> = withContext(Dispatchers.IO) {
         refreshMutex.withLock {
-            _syncStatus.value = PriceSyncStatus.REFRESHING
             try {
-                if (_prices.value.isEmpty()) {
-                    val cached = preferencesManager.cachedPricesFlow.first()
-                    if (cached.isNotEmpty()) _prices.value = cached
+                val cached = preferencesManager.cachedPricesFlow.first()
+                val lastSync = preferencesManager.lastUpdateTimeFlow.first()
+                val now = System.currentTimeMillis()
+                if (!force && cached.isNotEmpty() && now - lastSync in 0 until MIN_AUTO_REFRESH_GAP_MS) {
+                    return@withLock Result.success(PriceRefreshOutcome(cached, false))
                 }
+                setStatus(PriceSyncStatus.REFRESHING)
                 val tgjuItems = apiService.fetchAllFromTgju()
                 val tgjuCryptoIds = tgjuItems.filter { it.category == PriceCategory.CRYPTO }.map { it.id }.toSet()
                 val missingCryptoIds = expectedCryptoIds - tgjuCryptoIds
@@ -71,39 +85,45 @@ class PriceRepository(
                 }
                 val incoming = tgjuItems + fallbackCrypto
                 if (incoming.isEmpty()) {
-                    _syncStatus.value = if (_prices.value.isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE
+                    setStatus(if (cached.isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE)
                     return@withLock Result.failure(IllegalStateException("No valid market prices received"))
                 }
 
-                val currentMap = _prices.value.associateBy { it.id }.toMutableMap()
+                val currentMap = cached.associateBy { it.id }.toMutableMap()
                 val favorites = preferencesManager.favoritesFlow.first()
-                val now = System.currentTimeMillis()
+                var pricesChanged = false
                 incoming.forEach { item ->
-                    val points = mergeObservedPrices(item, currentMap[item.id])
-                    currentMap[item.id] = item.copy(
-                        sparklinePoints = points,
-                        lastUpdatedEpochMs = now,
-                        isFavorite = item.id in favorites
-                    )
+                    val existing = currentMap[item.id]
+                    if (existing == null || !existing.hasSameQuoteAs(item)) {
+                        pricesChanged = true
+                        currentMap[item.id] = item.copy(
+                            sparklinePoints = mergeObservedPrices(item, existing),
+                            lastUpdatedEpochMs = now,
+                            isFavorite = item.id in favorites
+                        )
+                    }
                 }
                 val finalItems = currentMap.values.sortedWith(compareBy<PriceItem> { it.category.ordinal }.thenBy { it.symbol })
-                _prices.value = finalItems
-                preferencesManager.saveCachedPrices(finalItems)
+                if (pricesChanged) {
+                    preferencesManager.saveCachedPrices(finalItems)
+                    _prices.value = finalItems
+                }
                 preferencesManager.updateLastSyncTime(now)
-                _syncStatus.value = PriceSyncStatus.SUCCESS
-                Result.success(finalItems)
+                setStatus(PriceSyncStatus.SUCCESS)
+                Result.success(PriceRefreshOutcome(finalItems, pricesChanged))
+            } catch (cancelled: CancellationException) {
+                setStatus(if (_prices.value.isEmpty()) PriceSyncStatus.IDLE else PriceSyncStatus.STALE)
+                throw cancelled
             } catch (error: Exception) {
                 Log.w(TAG, "Price refresh failed: ${error.javaClass.simpleName}")
-                _syncStatus.value = if (_prices.value.isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE
+                setStatus(if (preferencesManager.cachedPricesFlow.first().isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE)
                 Result.failure(error)
             }
         }
     }
 
     private fun mergeObservedPrices(newItem: PriceItem, existing: PriceItem?): List<Double> {
-        val history = priceHistoryMap.getOrPut(newItem.id) {
-            existing?.sparklinePoints?.toMutableList() ?: mutableListOf()
-        }
+        val history = existing?.sparklinePoints?.toMutableList() ?: mutableListOf()
         val current = if (newItem.isUsd) newItem.effectiveUsdPrice else newItem.priceTomans.toDouble()
         if (current > 0 && (history.lastOrNull() == null || history.last() != current)) {
             history.add(current)
@@ -119,4 +139,16 @@ class PriceRepository(
     }
 
     fun getItemById(id: String): PriceItem? = _prices.value.find { it.id.equals(id, ignoreCase = true) }
+
+    fun close() = repositoryScope.cancel()
+
+    private fun setStatus(status: PriceSyncStatus) {
+        _syncStatus.value = status
+        _isRefreshing.value = status == PriceSyncStatus.REFRESHING
+    }
+
+    private fun PriceItem.hasSameQuoteAs(other: PriceItem): Boolean =
+        priceTomans == other.priceTomans && priceUsd == other.priceUsd &&
+            change24hPercent == other.change24hPercent && high24h == other.high24h &&
+            low24h == other.low24h && changeAmount == other.changeAmount
 }

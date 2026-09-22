@@ -5,7 +5,10 @@ import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceItem
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
@@ -74,6 +77,7 @@ class PriceApiService(
      */
     suspend fun fetchAllFromTgju(): List<PriceItem> = withContext(Dispatchers.IO) {
         for (url in TGJU_ENDPOINTS) {
+            currentCoroutineContext().ensureActive()
             try {
                 val urlWithTimestamp = if (url.contains("?")) "$url&_=${System.currentTimeMillis()}" else "$url?_=${System.currentTimeMillis()}"
                 val request = Request.Builder()
@@ -187,6 +191,8 @@ class PriceApiService(
                         return@withContext items
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
                 Log.e(TAG, "Error fetching from $url: ${e.message}")
             }
@@ -260,6 +266,8 @@ class PriceApiService(
                 }
                 cryptoList
             }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e(TAG, "Nobitex error: ${e.message}")
             emptyList()

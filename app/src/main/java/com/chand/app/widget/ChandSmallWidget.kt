@@ -35,9 +35,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.model.PriceItem
-import com.chand.app.data.remote.PriceApiService
+import com.chand.app.data.model.PriceCatalog
 import com.chand.app.ui.MainActivity
-import kotlinx.coroutines.flow.first
 
 class ChandSmallWidget : GlanceAppWidget() {
 
@@ -46,14 +45,14 @@ class ChandSmallWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val pref = PreferencesManager(context)
         val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
-        val selectedId = pref.smallWidgetItemFlow(appWidgetId).first()
-        val allItems = pref.cachedPricesFlow.first()
+        val snapshot = pref.readWidgetSnapshot(appWidgetId)
+        val selectedId = snapshot.smallItemId
+        val allItems = PriceCatalog.withQuotes(snapshot.prices)
         val item = allItems.find { it.id.equals(selectedId, ignoreCase = true) } ?: allItems.firstOrNull()
 
-        val themeId = pref.widgetThemeFlow.first()
-        val opacity = pref.widgetOpacityFlow.first()
-        val cornerRadius = pref.widgetCornerRadiusFlow.first()
-        val widgetTheme = WidgetTheme.fromId(themeId)
+        val opacity = snapshot.opacity
+        val cornerRadius = snapshot.cornerRadius
+        val widgetTheme = WidgetTheme.fromId(snapshot.themeId)
 
         provideContent {
             GlanceTheme {
@@ -192,7 +191,7 @@ class ChandSmallWidget : GlanceAppWidget() {
                                 fontWeight = FontWeight.Bold
                             )
                         )
-                        if (item.isUsd) {
+                        if (item.isUsd && item.priceTomans > 0) {
                             Spacer(modifier = GlanceModifier.width(3.dp))
                             Text(
                                 text = "$",

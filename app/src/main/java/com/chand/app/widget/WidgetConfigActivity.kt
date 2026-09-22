@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,8 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.model.PriceItem
+import com.chand.app.data.model.PriceCatalog
 import com.chand.app.data.model.PriceCategory
-import com.chand.app.data.remote.PriceApiService
 import com.chand.app.ui.theme.AppleBackground
 import com.chand.app.ui.theme.AppleBlue
 import com.chand.app.ui.theme.AppleCardBackground
@@ -62,6 +63,7 @@ import com.chand.app.ui.theme.AppleTextPrimary
 import com.chand.app.ui.theme.AppleTextSecondary
 import com.chand.app.ui.theme.ChandTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -132,7 +134,7 @@ private fun WidgetConfigurationScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val cachedItems by preferences.cachedPricesFlow.collectAsState(initial = emptyList())
-    val availableItems = cachedItems.ifEmpty { PriceApiService.getPreviewItems() }
+    val availableItems = remember(cachedItems) { PriceCatalog.withQuotes(cachedItems) }
     val savedIdsFlow: Flow<List<String>> = remember(kind, appWidgetId) {
         when (kind) {
             WidgetKind.SMALL -> preferences.smallWidgetItemFlow(appWidgetId).map { listOf(it) }
@@ -140,19 +142,26 @@ private fun WidgetConfigurationScreen(
             WidgetKind.LARGE -> preferences.largeWidgetItemsFlow(appWidgetId)
         }
     }
-    val storedIds by savedIdsFlow.collectAsState(initial = emptyList())
     val widgetThemeId by preferences.widgetThemeFlow.collectAsState(initial = PreferencesManager.DEFAULT_WIDGET_THEME)
-    val fallbackIds = remember(kind, availableItems) {
+    val fallbackIds = remember(kind) {
         when (kind) {
-            WidgetKind.SMALL -> listOf(availableItems.firstOrNull()?.id ?: "usd")
+            WidgetKind.SMALL -> listOf("usd")
             WidgetKind.MEDIUM -> PreferencesManager.DEFAULT_MEDIUM_ITEMS
-            WidgetKind.LARGE -> availableItems.filter { it.id in PreferencesManager.DEFAULT_FAVORITES }
+            WidgetKind.LARGE -> PriceCatalog.all.filter { it.id in PreferencesManager.DEFAULT_FAVORITES }
                 .map { it.id }
                 .take(kind.maxItems)
         }
     }
-    var selectedIds by remember(kind, storedIds, fallbackIds) {
-        mutableStateOf(storedIds.filter { storedId -> availableItems.any { it.id == storedId } }.ifEmpty { fallbackIds })
+    var selectedIds by remember(appWidgetId) { mutableStateOf(fallbackIds) }
+    var hasEditedSelection by remember(appWidgetId) { mutableStateOf(false) }
+    var selectionLoaded by remember(appWidgetId) { mutableStateOf(false) }
+    LaunchedEffect(savedIdsFlow) {
+        val storedIds = savedIdsFlow.first()
+        if (!hasEditedSelection && storedIds.isNotEmpty()) {
+            selectedIds = storedIds.filter { storedId -> PriceCatalog.all.any { it.id == storedId } }
+                .ifEmpty { fallbackIds }
+        }
+        selectionLoaded = true
     }
     var selectedThemeId by remember(widgetThemeId) { mutableStateOf(widgetThemeId) }
     var searchQuery by remember { mutableStateOf("") }
@@ -236,6 +245,7 @@ private fun WidgetConfigurationScreen(
                     .border(0.8.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(12.dp))
                     .then(
                         if (canToggle) Modifier.clickable {
+                            hasEditedSelection = true
                             selectedIds = when {
                                 kind == WidgetKind.SMALL -> listOf(item.id)
                                 isSelected -> selectedIds.filterNot { it == item.id }
@@ -266,14 +276,20 @@ private fun WidgetConfigurationScreen(
                             Text("${selectedIndex + 1}", color = AppleBlue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.width(6.dp))
                             IconButton(
-                                onClick = { selectedIds = selectedIds.move(selectedIndex, selectedIndex - 1) },
+                                onClick = {
+                                    hasEditedSelection = true
+                                    selectedIds = selectedIds.move(selectedIndex, selectedIndex - 1)
+                                },
                                 enabled = selectedIndex > 0,
                                 modifier = Modifier.size(30.dp)
                             ) {
                                 Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "انتقال به بالا", tint = AppleBlue)
                             }
                             IconButton(
-                                onClick = { selectedIds = selectedIds.move(selectedIndex, selectedIndex + 1) },
+                                onClick = {
+                                    hasEditedSelection = true
+                                    selectedIds = selectedIds.move(selectedIndex, selectedIndex + 1)
+                                },
                                 enabled = selectedIndex < selectedIds.lastIndex,
                                 modifier = Modifier.size(30.dp)
                             ) {
@@ -317,11 +333,16 @@ private fun WidgetConfigurationScreen(
                         WidgetKind.MEDIUM -> preferences.setMediumWidgetItems(selectedIds, appWidgetId)
                         WidgetKind.LARGE -> preferences.setLargeWidgetItems(selectedIds, appWidgetId)
                     }
-                    preferences.setWidgetTheme(selectedThemeId)
-                    ChandWidgetUpdater.updateOne(context, appWidgetId, kind.toUpdateType())
+                    if (selectedThemeId != widgetThemeId) {
+                        preferences.setWidgetTheme(selectedThemeId)
+                        ChandWidgetUpdater.updateAll(context)
+                    } else {
+                        ChandWidgetUpdater.updateOne(context, appWidgetId, kind.toUpdateType())
+                    }
                     onSaved()
                 }
             },
+            enabled = selectionLoaded,
             modifier = Modifier.fillMaxWidth().height(48.dp),
             shape = RoundedCornerShape(50),
             colors = ButtonDefaults.buttonColors(containerColor = AppleBlue, contentColor = Color.White)

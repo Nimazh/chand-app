@@ -6,9 +6,6 @@ import androidx.work.WorkerParameters
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.remote.PriceApiService
 import com.chand.app.data.repository.PriceRepository
-import com.chand.app.widget.ChandLargeWidget
-import com.chand.app.widget.ChandMediumWidget
-import com.chand.app.widget.ChandSmallWidget
 import com.chand.app.widget.ChandWidgetUpdater
 
 class PriceSyncWorker(
@@ -20,13 +17,13 @@ class PriceSyncWorker(
         return try {
             val prefManager = PreferencesManager(context)
             val apiService = PriceApiService()
-            val repository = PriceRepository(apiService, prefManager)
+            val repository = PriceRepository(apiService, prefManager, observeCache = false)
 
             val refreshResult = repository.refreshPrices()
             if (refreshResult.isFailure) return Result.retry()
 
             // Update all Glance widgets on the home screen
-            ChandWidgetUpdater.updateAll(context)
+            if (refreshResult.getOrNull()?.pricesChanged == true) ChandWidgetUpdater.updateAll(context)
 
             Result.success()
         } catch (e: Exception) {
