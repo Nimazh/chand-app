@@ -396,7 +396,7 @@ fun PriceDetailModal(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "تنظیم در ویجت صفحه اصلی",
+                        text = "تنظیم در همهٔ ویجت‌های تکی",
                         fontSize = 14.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White

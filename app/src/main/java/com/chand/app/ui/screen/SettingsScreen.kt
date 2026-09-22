@@ -67,7 +67,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.appwidget.updateAll
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceCatalog
@@ -84,10 +83,8 @@ import com.chand.app.ui.theme.AppleTextPrimary
 import com.chand.app.ui.theme.AppleTextSecondary
 import com.chand.app.ui.theme.AppleTextTertiary
 import com.chand.app.widget.ChandWidgetUpdater
-import com.chand.app.widget.ChandMediumWidget
 import com.chand.app.widget.ChandMediumWidgetReceiver
 import com.chand.app.widget.ChandLargeWidgetReceiver
-import com.chand.app.widget.ChandSmallWidget
 import com.chand.app.widget.ChandSmallWidgetReceiver
 import com.chand.app.widget.ChandWidgetType
 import com.chand.app.widget.WidgetTheme
@@ -169,7 +166,7 @@ fun SettingsScreen(
         val widgetId = editedMediumWidgetId
         scope.launch {
             prefManager.setMediumWidgetItems(updatedIds, widgetId)
-            if (widgetId == null) ChandMediumWidget().updateAll(context)
+            if (widgetId == null) ChandWidgetUpdater.updateType(context, ChandWidgetType.MEDIUM)
             else ChandWidgetUpdater.updateOne(context, widgetId, ChandWidgetType.MEDIUM)
         }
     }
@@ -859,7 +856,7 @@ fun SettingsScreen(
                                         val widgetId = editedSmallWidgetId
                                         scope.launch {
                                             prefManager.setSmallWidgetItem(item.id, widgetId)
-                                            if (widgetId == null) ChandSmallWidget().updateAll(context)
+                                            if (widgetId == null) ChandWidgetUpdater.updateType(context, ChandWidgetType.SMALL)
                                             else ChandWidgetUpdater.updateOne(context, widgetId, ChandWidgetType.SMALL)
                                         }
                                     }

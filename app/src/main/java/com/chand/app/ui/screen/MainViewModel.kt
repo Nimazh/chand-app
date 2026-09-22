@@ -1,6 +1,8 @@
 package com.chand.app.ui.screen
 
 import android.app.Application
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -11,6 +13,8 @@ import com.chand.app.data.remote.PriceApiService
 import com.chand.app.data.repository.PriceRepository
 import com.chand.app.data.repository.PriceSyncStatus
 import com.chand.app.widget.ChandWidgetUpdater
+import com.chand.app.widget.ChandSmallWidgetReceiver
+import com.chand.app.widget.ChandWidgetType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -157,8 +161,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setAsSmallWidget(item: PriceItem) {
         viewModelScope.launch {
-            preferencesManager.setSmallWidgetItem(item.id)
-            updateAllWidgets()
+            val context = getApplication<Application>()
+            val ids = AppWidgetManager.getInstance(context)
+                .getAppWidgetIds(ComponentName(context, ChandSmallWidgetReceiver::class.java))
+            preferencesManager.setSmallWidgetItemForAll(item.id, ids)
+            ChandWidgetUpdater.updateType(context, ChandWidgetType.SMALL)
             closeItemDetail()
         }
     }

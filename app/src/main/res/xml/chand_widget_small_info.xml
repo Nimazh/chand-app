@@ -13,4 +13,5 @@
     android:previewImage="@drawable/widget_small_preview"
     android:resizeMode="none"
     android:updatePeriodMillis="0"
+    android:widgetFeatures="reconfigurable"
     android:widgetCategory="home_screen|keyguard" />

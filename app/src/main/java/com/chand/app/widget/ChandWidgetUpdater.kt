@@ -1,25 +1,66 @@
 package com.chand.app.widget
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.launch
 
-/** Keeps widget rendering on the same data generation that was just persisted. */
+/** Serializes each widget size so a slower old render cannot overwrite a newer selection. */
 object ChandWidgetUpdater {
-    suspend fun updateAll(context: Context) = coroutineScope {
-        launch { ChandSmallWidget().updateAll(context) }
-        launch { ChandMediumWidget().updateAll(context) }
-        launch { ChandLargeWidget().updateAll(context) }
+    private const val TAG = "ChandWidgetUpdater"
+    private val locks = ChandWidgetType.entries.associateWith { Mutex() }
+
+    suspend fun updateAll(context: Context) = supervisorScope {
+        ChandWidgetType.entries.forEach { kind ->
+            launch { updateType(context, kind) }
+        }
+    }
+
+    suspend fun updateType(context: Context, kind: ChandWidgetType) {
+        locks.getValue(kind).withLock {
+            val started = SystemClock.elapsedRealtime()
+            try {
+                when (kind) {
+                    ChandWidgetType.SMALL -> ChandSmallWidget().updateAll(context)
+                    ChandWidgetType.MEDIUM -> ChandMediumWidget().updateAll(context)
+                    ChandWidgetType.LARGE -> ChandLargeWidget().updateAll(context)
+                }
+                Log.d(TAG, "Updated $kind widgets in ${SystemClock.elapsedRealtime() - started}ms")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.e(TAG, "Failed to update $kind widgets", error)
+            }
+        }
     }
 
     suspend fun updateOne(context: Context, appWidgetId: Int, kind: ChandWidgetType) {
-        val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
-        when (kind) {
-            ChandWidgetType.SMALL -> ChandSmallWidget().update(context, glanceId)
-            ChandWidgetType.MEDIUM -> ChandMediumWidget().update(context, glanceId)
-            ChandWidgetType.LARGE -> ChandLargeWidget().update(context, glanceId)
+        locks.getValue(kind).withLock {
+            val started = SystemClock.elapsedRealtime()
+            try {
+                val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
+                when (kind) {
+                    ChandWidgetType.SMALL -> ChandSmallWidget().update(context, glanceId)
+                    ChandWidgetType.MEDIUM -> ChandMediumWidget().update(context, glanceId)
+                    ChandWidgetType.LARGE -> ChandLargeWidget().update(context, glanceId)
+                }
+                Log.d(TAG, "Updated $kind widget $appWidgetId in ${SystemClock.elapsedRealtime() - started}ms")
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w(TAG, "Direct update failed for $kind widget $appWidgetId; updating size", error)
+                when (kind) {
+                    ChandWidgetType.SMALL -> ChandSmallWidget().updateAll(context)
+                    ChandWidgetType.MEDIUM -> ChandMediumWidget().updateAll(context)
+                    ChandWidgetType.LARGE -> ChandLargeWidget().updateAll(context)
+                }
+            }
         }
     }
 }

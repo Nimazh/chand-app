@@ -131,6 +131,18 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
+    /** The detail-screen shortcut explicitly applies its asset to every installed small widget. */
+    suspend fun setSmallWidgetItemForAll(itemId: String, appWidgetIds: IntArray) {
+        val normalized = itemId.trim().lowercase()
+        require(normalized.matches(Regex("[a-z0-9_-]{1,32}"))) { "Invalid asset id" }
+        context.dataStore.edit { prefs ->
+            prefs[KEY_WIDGET_SMALL_ITEM] = normalized
+            appWidgetIds.filter { it > 0 }.forEach { id ->
+                prefs[stringPreferencesKey(WIDGET_SMALL_ITEM_PREFIX + id)] = normalized
+            }
+        }
+    }
+
     suspend fun setMediumWidgetItems(itemIds: List<String>, appWidgetId: Int? = null) {
         val normalized = normalizeAssetIds(itemIds, 4)
         require(normalized.isNotEmpty()) { "At least one asset is required" }
