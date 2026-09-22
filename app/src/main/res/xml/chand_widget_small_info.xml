@@ -12,5 +12,5 @@
     android:maxResizeHeight="180dp"
     android:previewImage="@drawable/widget_small_preview"
     android:resizeMode="none"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="0"
     android:widgetCategory="home_screen|keyguard" />

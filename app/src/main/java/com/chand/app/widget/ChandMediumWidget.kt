@@ -12,6 +12,7 @@ import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -39,7 +40,8 @@ class ChandMediumWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val pref = PreferencesManager(context)
-        val selectedIds = pref.mediumWidgetItemsFlow.first()
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
+        val selectedIds = pref.mediumWidgetItemsFlow(appWidgetId).first()
         val allItems = pref.cachedPricesFlow.first()
 
         val displayItems = selectedIds.mapNotNull { selId ->

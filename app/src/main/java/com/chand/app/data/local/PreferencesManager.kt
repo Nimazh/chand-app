@@ -21,6 +21,9 @@ class PreferencesManager(private val context: Context) {
         private val KEY_WIDGET_SMALL_ITEM = stringPreferencesKey("widget_small_item")
         private const val WIDGET_SMALL_ITEM_PREFIX = "widget_small_item_"
         private val KEY_WIDGET_MEDIUM_ITEMS = stringPreferencesKey("widget_medium_items_order")
+        private const val WIDGET_MEDIUM_ITEMS_PREFIX = "widget_medium_items_order_"
+        private const val WIDGET_LARGE_ITEMS_PREFIX = "widget_large_items_order_"
+        private val KEY_FOREGROUND_REFRESH_MINUTES = intPreferencesKey("foreground_refresh_minutes")
         private val KEY_LAST_UPDATE_TIME = longPreferencesKey("last_update_time")
         private val KEY_APP_THEME_MODE = stringPreferencesKey("app_theme_mode")
         private val KEY_CACHED_PRICES_JSON = stringPreferencesKey("cached_prices_json")
@@ -34,6 +37,8 @@ class PreferencesManager(private val context: Context) {
         const val DEFAULT_WIDGET_OPACITY = 100
         const val DEFAULT_WIDGET_CORNER_RADIUS = 22
         const val DEFAULT_APP_THEME_MODE = "system"
+        const val DEFAULT_FOREGROUND_REFRESH_MINUTES = 5
+        private val ALLOWED_FOREGROUND_REFRESH_MINUTES = setOf(5, 10, 15)
     }
 
     private val gson = Gson()
@@ -42,15 +47,30 @@ class PreferencesManager(private val context: Context) {
     val widgetThemeFlow: Flow<String> = context.dataStore.data.map { it[KEY_WIDGET_THEME] ?: DEFAULT_WIDGET_THEME }
     val widgetOpacityFlow: Flow<Int> = context.dataStore.data.map { it[KEY_WIDGET_OPACITY] ?: DEFAULT_WIDGET_OPACITY }
     val widgetCornerRadiusFlow: Flow<Int> = context.dataStore.data.map { it[KEY_WIDGET_CORNER_RADIUS] ?: DEFAULT_WIDGET_CORNER_RADIUS }
+    val foregroundRefreshMinutesFlow: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_FOREGROUND_REFRESH_MINUTES]
+            ?.takeIf { it in ALLOWED_FOREGROUND_REFRESH_MINUTES }
+            ?: DEFAULT_FOREGROUND_REFRESH_MINUTES
+    }
 
     fun smallWidgetItemFlow(appWidgetId: Int? = null): Flow<String> = context.dataStore.data.map { prefs ->
         val widgetKey = appWidgetId?.takeIf { it > 0 }?.let { stringPreferencesKey(WIDGET_SMALL_ITEM_PREFIX + it) }
         (widgetKey?.let { prefs[it] } ?: prefs[KEY_WIDGET_SMALL_ITEM] ?: "usd").lowercase()
     }
 
-    val mediumWidgetItemsFlow: Flow<List<String>> = context.dataStore.data.map { prefs ->
-        prefs[KEY_WIDGET_MEDIUM_ITEMS]?.split(',')?.map(String::trim)?.filter(String::isNotBlank)
-            ?.distinct()?.take(4)?.takeIf { it.isNotEmpty() } ?: DEFAULT_MEDIUM_ITEMS
+    fun mediumWidgetItemsFlow(appWidgetId: Int? = null): Flow<List<String>> = context.dataStore.data.map { prefs ->
+        val widgetKey = appWidgetId?.takeIf { it > 0 }?.let { stringPreferencesKey(WIDGET_MEDIUM_ITEMS_PREFIX + it) }
+        parseAssetIds(widgetKey?.let { prefs[it] } ?: prefs[KEY_WIDGET_MEDIUM_ITEMS], 4)
+            .ifEmpty { DEFAULT_MEDIUM_ITEMS }
+    }
+    val mediumWidgetItemsFlow: Flow<List<String>> = mediumWidgetItemsFlow()
+
+    /** An empty list means this large widget still follows the user's favourites. */
+    fun largeWidgetItemsFlow(appWidgetId: Int): Flow<List<String>> = context.dataStore.data.map { prefs ->
+        if (appWidgetId <= 0) emptyList() else parseAssetIds(
+            prefs[stringPreferencesKey(WIDGET_LARGE_ITEMS_PREFIX + appWidgetId)],
+            6
+        )
     }
     val appThemeModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_THEME_MODE] ?: DEFAULT_APP_THEME_MODE }
     val lastUpdateTimeFlow: Flow<Long> = context.dataStore.data.map { it[KEY_LAST_UPDATE_TIME] ?: 0L }
@@ -85,11 +105,23 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
-    suspend fun setMediumWidgetItems(itemIds: List<String>) {
-        val normalized = itemIds.map { it.trim().lowercase() }.filter { it.matches(Regex("[a-z0-9_-]{1,32}")) }
-            .distinct().take(4)
+    suspend fun setMediumWidgetItems(itemIds: List<String>, appWidgetId: Int? = null) {
+        val normalized = normalizeAssetIds(itemIds, 4)
         require(normalized.isNotEmpty()) { "At least one asset is required" }
-        context.dataStore.edit { it[KEY_WIDGET_MEDIUM_ITEMS] = normalized.joinToString(",") }
+        context.dataStore.edit { prefs ->
+            val widgetKey = appWidgetId?.takeIf { it > 0 }?.let { stringPreferencesKey(WIDGET_MEDIUM_ITEMS_PREFIX + it) }
+            if (widgetKey == null) prefs[KEY_WIDGET_MEDIUM_ITEMS] = normalized.joinToString(",")
+            else prefs[widgetKey] = normalized.joinToString(",")
+        }
+    }
+
+    suspend fun setLargeWidgetItems(itemIds: List<String>, appWidgetId: Int) {
+        require(appWidgetId > 0) { "A valid widget id is required" }
+        val normalized = normalizeAssetIds(itemIds, 6)
+        require(normalized.isNotEmpty()) { "At least one asset is required" }
+        context.dataStore.edit { prefs ->
+            prefs[stringPreferencesKey(WIDGET_LARGE_ITEMS_PREFIX + appWidgetId)] = normalized.joinToString(",")
+        }
     }
 
     suspend fun setWidgetTheme(themeId: String) = context.dataStore.edit { it[KEY_WIDGET_THEME] = themeId }
@@ -103,4 +135,18 @@ class PreferencesManager(private val context: Context) {
         require(mode in setOf("light", "dark", "system")) { "Invalid theme mode" }
         context.dataStore.edit { it[KEY_APP_THEME_MODE] = mode }
     }
+
+    suspend fun setForegroundRefreshMinutes(minutes: Int) {
+        require(minutes in ALLOWED_FOREGROUND_REFRESH_MINUTES) { "Invalid refresh interval" }
+        context.dataStore.edit { it[KEY_FOREGROUND_REFRESH_MINUTES] = minutes }
+    }
+
+    private fun parseAssetIds(value: String?, maxItems: Int): List<String> =
+        value?.split(',')?.let { normalizeAssetIds(it, maxItems) } ?: emptyList()
+
+    private fun normalizeAssetIds(itemIds: List<String>, maxItems: Int): List<String> =
+        itemIds.map { it.trim().lowercase() }
+            .filter { it.matches(Regex("[a-z0-9_-]{1,32}")) }
+            .distinct()
+            .take(maxItems)
 }

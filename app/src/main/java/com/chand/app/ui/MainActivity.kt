@@ -63,4 +63,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        viewModel.startForegroundAutoRefresh()
+    }
+
+    override fun onStop() {
+        viewModel.stopForegroundAutoRefresh()
+        super.onStop()
+    }
+
 }

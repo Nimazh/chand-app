@@ -2,14 +2,12 @@ package com.chand.app.widget
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,16 +20,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,13 +39,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.updateAll
 import com.chand.app.data.local.PreferencesManager
+import com.chand.app.data.model.PriceItem
 import com.chand.app.data.remote.PriceApiService
 import com.chand.app.ui.theme.AppleBackground
 import com.chand.app.ui.theme.AppleBlue
@@ -55,285 +56,236 @@ import com.chand.app.ui.theme.AppleCardBorder
 import com.chand.app.ui.theme.AppleTextPrimary
 import com.chand.app.ui.theme.AppleTextSecondary
 import com.chand.app.ui.theme.ChandTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class WidgetConfigActivity : ComponentActivity() {
-
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Set the result to CANCELED. This will cause the widget host to cancel
-        // out of the widget placement if the user presses the back button.
         setResult(Activity.RESULT_CANCELED)
-
-        val intent = intent
-        val extras = intent.extras
-        if (extras != null) {
-            appWidgetId = extras.getInt(
-                AppWidgetManager.EXTRA_APPWIDGET_ID,
-                AppWidgetManager.INVALID_APPWIDGET_ID
-            )
-        }
+        appWidgetId = intent?.extras?.getInt(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID
+        ) ?: AppWidgetManager.INVALID_APPWIDGET_ID
 
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
             finish()
             return
         }
 
-        val items = PriceApiService.getPreviewItems()
-        val prefManager = PreferencesManager(this)
-
+        val preferences = PreferencesManager(this)
         setContent {
             ChandTheme {
-                val scope = rememberCoroutineScope()
-                var selectedItemId by remember { mutableStateOf("usd") }
-                var selectedThemeId by remember { mutableStateOf(PreferencesManager.DEFAULT_WIDGET_THEME) }
+                WidgetConfigurationScreen(
+                    kind = resolveWidgetKind(),
+                    appWidgetId = appWidgetId,
+                    preferences = preferences,
+                    onSaved = ::finishWithSuccess
+                )
+            }
+        }
+    }
 
-                val selectedItem = items.find { it.id.equals(selectedItemId, ignoreCase = true) } ?: items.first()
-                val activeTheme = WidgetTheme.fromId(selectedThemeId)
+    private fun resolveWidgetKind(): WidgetKind {
+        val providerClassName = AppWidgetManager.getInstance(this)
+            .getAppWidgetInfo(appWidgetId)
+            ?.provider
+            ?.className
+            .orEmpty()
+        return when {
+            providerClassName.endsWith("ChandMediumWidgetReceiver") -> WidgetKind.MEDIUM
+            providerClassName.endsWith("ChandLargeWidgetReceiver") -> WidgetKind.LARGE
+            else -> WidgetKind.SMALL
+        }
+    }
 
-                Column(
+    private fun finishWithSuccess() {
+        setResult(
+            Activity.RESULT_OK,
+            android.content.Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+        )
+        finish()
+    }
+}
+
+private enum class WidgetKind(val title: String, val maxItems: Int, val helper: String) {
+    SMALL("ویجت تکی", 1, "یک دارایی را برای این ویجت انتخاب کنید."),
+    MEDIUM("ویجت متوسط", 4, "تا ۴ دارایی انتخاب کنید؛ ترتیب انتخاب، ترتیب نمایش است."),
+    LARGE("ویجت بزرگ", 6, "تا ۶ دارایی انتخاب کنید؛ ترتیب انتخاب، ترتیب نمایش است.")
+}
+
+@androidx.compose.runtime.Composable
+private fun WidgetConfigurationScreen(
+    kind: WidgetKind,
+    appWidgetId: Int,
+    preferences: PreferencesManager,
+    onSaved: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val cachedItems by preferences.cachedPricesFlow.collectAsState(initial = emptyList())
+    val availableItems = cachedItems.ifEmpty { PriceApiService.getPreviewItems() }
+    val savedIdsFlow: Flow<List<String>> = remember(kind, appWidgetId) {
+        when (kind) {
+            WidgetKind.SMALL -> preferences.smallWidgetItemFlow(appWidgetId).map { listOf(it) }
+            WidgetKind.MEDIUM -> preferences.mediumWidgetItemsFlow(appWidgetId)
+            WidgetKind.LARGE -> preferences.largeWidgetItemsFlow(appWidgetId)
+        }
+    }
+    val storedIds by savedIdsFlow.collectAsState(initial = emptyList())
+    val widgetThemeId by preferences.widgetThemeFlow.collectAsState(initial = PreferencesManager.DEFAULT_WIDGET_THEME)
+    val fallbackIds = remember(kind, availableItems) {
+        when (kind) {
+            WidgetKind.SMALL -> listOf(availableItems.firstOrNull()?.id ?: "usd")
+            WidgetKind.MEDIUM -> PreferencesManager.DEFAULT_MEDIUM_ITEMS
+            WidgetKind.LARGE -> availableItems.filter { it.id in PreferencesManager.DEFAULT_FAVORITES }
+                .map { it.id }
+                .take(kind.maxItems)
+        }
+    }
+    var selectedIds by remember(kind, storedIds, fallbackIds) {
+        mutableStateOf(storedIds.filter { storedId -> availableItems.any { it.id == storedId } }.ifEmpty { fallbackIds })
+    }
+    var selectedThemeId by remember(widgetThemeId) { mutableStateOf(widgetThemeId) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppleBackground)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text(kind.title, color = AppleTextPrimary, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(kind.helper, color = AppleTextSecondary, fontSize = 13.sp)
+        Spacer(modifier = Modifier.height(14.dp))
+
+        SelectionPreview(
+            items = selectedIds.mapNotNull { selectedId -> availableItems.find { it.id == selectedId } },
+            title = "${selectedIds.size} از ${kind.maxItems} دارایی انتخاب شده"
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("دارایی‌های نمایش‌داده‌شده", color = AppleTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        availableItems.forEach { item ->
+            val selectedIndex = selectedIds.indexOf(item.id)
+            val isSelected = selectedIndex >= 0
+            val canToggle = !isSelected || selectedIds.size > 1
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 3.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AppleCardBackground)
+                    .border(0.8.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(12.dp))
+                    .then(
+                        if (canToggle) Modifier.clickable {
+                            selectedIds = when {
+                                kind == WidgetKind.SMALL -> listOf(item.id)
+                                isSelected -> selectedIds.filterNot { it == item.id }
+                                selectedIds.size < kind.maxItems -> selectedIds + item.id
+                                else -> selectedIds
+                            }
+                        } else Modifier
+                    )
+                    .padding(horizontal = 14.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(item.iconResId),
+                        contentDescription = item.effectiveNameEn,
+                        modifier = Modifier.size(26.dp).clip(CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text("${item.effectiveNameEn} (${item.symbol})", color = if (isSelected) AppleBlue else AppleTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text(item.formattedPriceWithUnit, color = AppleTextSecondary, fontSize = 12.sp)
+                    }
+                }
+                if (isSelected) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (kind != WidgetKind.SMALL) {
+                            Text("${selectedIndex + 1}", color = AppleBlue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                        Icon(Icons.Filled.Check, contentDescription = "انتخاب شده", tint = AppleBlue, modifier = Modifier.size(19.dp))
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("تم ظاهری", color = AppleTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Text("این انتخاب فعلاً روی همهٔ ویجت‌ها اعمال می‌شود.", color = AppleTextSecondary, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            WidgetTheme.values().take(3).forEach { theme ->
+                val isSelected = theme.id == selectedThemeId
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(AppleBackground)
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .weight(1f)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) AppleCardBackground else Color(0xFFE5E5EA))
+                        .border(1.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(10.dp))
+                        .clickable { selectedThemeId = theme.id }
+                        .padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Symbol - V2",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AppleTextPrimary
-                    )
+                    Text(theme.titleFa.substringBefore(" ("), color = if (isSelected) AppleBlue else AppleTextSecondary, fontSize = 11.sp)
+                }
+            }
+        }
 
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Focus on a single item",
-                        fontSize = 13.sp,
-                        color = AppleTextSecondary
-                    )
-
-                    Text(
-                        text = "پیش‌نمایش استایل است؛ قیمت واقعی پس از دریافت آنلاین نمایش داده می‌شود.",
-                        fontSize = 11.sp,
-                        color = AppleTextSecondary
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Live Apple Squircle Widget Card Preview (Exact match to media_1789907711489.png)
-                    Box(
-                        modifier = Modifier
-                            .size(150.dp)
-                            .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = Color(0x10000000), spotColor = Color(0x1A000000))
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(activeTheme.baseColor)
-                            .border(0.8.dp, AppleCardBorder, RoundedCornerShape(24.dp))
-                            .padding(14.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Top Row: Circular Flag Badge (Left) & Name/Symbol (Right)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Image(
-                                    painter = painterResource(id = selectedItem.iconResId),
-                                    contentDescription = selectedItem.effectiveNameEn,
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                )
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = selectedItem.effectiveNameEn,
-                                        color = activeTheme.subTextColor,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        maxLines = 1
-                                    )
-                                    Text(
-                                        text = selectedItem.symbol,
-                                        color = activeTheme.textColor,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-
-                            // Middle Row: Arrow Change Indicator (Matches Photo: ↓5,625)
-                            Text(
-                                text = selectedItem.widgetArrowChangeFormatted,
-                                color = if (selectedItem.isFavorable) Color(0xFF34C759) else Color(0xFFFF3B30),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            // Bottom Row: Large Bold Price (Matches Photo: 100,115)
-                            Row(verticalAlignment = Alignment.Bottom) {
-                                Text(
-                                    text = selectedItem.formattedPrice,
-                                    color = activeTheme.textColor,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = (-0.5).sp
-                                )
-                                if (selectedItem.isUsd) {
-                                    Text(
-                                        text = " $",
-                                        color = activeTheme.subTextColor,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(bottom = 2.dp)
-                                    )
-                                }
-                            }
-                        }
+        Spacer(modifier = Modifier.height(18.dp))
+        Button(
+            onClick = {
+                scope.launch {
+                    when (kind) {
+                        WidgetKind.SMALL -> preferences.setSmallWidgetItem(selectedIds.first(), appWidgetId)
+                        WidgetKind.MEDIUM -> preferences.setMediumWidgetItems(selectedIds, appWidgetId)
+                        WidgetKind.LARGE -> preferences.setLargeWidgetItems(selectedIds, appWidgetId)
                     }
+                    preferences.setWidgetTheme(selectedThemeId)
+                    ChandSmallWidget().updateAll(context)
+                    ChandMediumWidget().updateAll(context)
+                    ChandLargeWidget().updateAll(context)
+                    onSaved()
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+            shape = RoundedCornerShape(50),
+            colors = ButtonDefaults.buttonColors(containerColor = AppleBlue, contentColor = Color.White)
+        ) {
+            Text("ذخیره و به‌روزرسانی ویجت", fontWeight = FontWeight.Bold)
+        }
+    }
+}
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Theme selector chips
-                    Text(
-                        text = "تم ظاهری ویجت:",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AppleTextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        WidgetTheme.values().take(3).forEach { theme ->
-                            val isSelected = theme.id == selectedThemeId
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSelected) AppleCardBackground else Color(0xFFE5E5EA))
-                                    .border(
-                                        width = if (isSelected) 1.5.dp else 0.8.dp,
-                                        color = if (isSelected) AppleBlue else AppleCardBorder,
-                                        shape = RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable { selectedThemeId = theme.id }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = theme.titleFa.substringBefore(" ("),
-                                    color = if (isSelected) AppleBlue else AppleTextSecondary,
-                                    fontSize = 11.5.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text(
-                        text = "انتخاب دارایی:",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AppleTextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(items) { item ->
-                            val isSelected = item.id == selectedItemId
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(AppleCardBackground)
-                                    .border(0.8.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(12.dp))
-                                    .clickable { selectedItemId = item.id }
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Image(
-                                        painter = painterResource(id = item.iconResId),
-                                        contentDescription = item.effectiveNameEn,
-                                        modifier = Modifier
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text(
-                                            text = "${item.effectiveNameEn} (${item.symbol})",
-                                            color = if (isSelected) AppleBlue else AppleTextPrimary,
-                                            fontSize = 14.sp,
-                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = item.formattedPriceWithUnit,
-                                            color = AppleTextSecondary,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Check,
-                                        contentDescription = "Selected",
-                                        tint = AppleBlue,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                prefManager.setSmallWidgetItem(selectedItemId, appWidgetId)
-                                prefManager.setWidgetTheme(selectedThemeId)
-                                ChandSmallWidget().updateAll(this@WidgetConfigActivity)
-
-                                val resultValue = Intent().apply {
-                                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                                }
-                                setResult(Activity.RESULT_OK, resultValue)
-                                finish()
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = AppleBlue, contentColor = Color.White),
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        Text(
-                            text = "+ Add Widget  (افزودن ویجت)",
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+@androidx.compose.runtime.Composable
+private fun SelectionPreview(items: List<PriceItem>, title: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(AppleCardBackground)
+            .border(0.8.dp, AppleCardBorder, RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        Column {
+            Text(title, color = AppleTextSecondary, fontSize = 12.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            if (items.isEmpty()) {
+                Text("دارایی انتخاب نشده است", color = AppleTextSecondary, fontSize = 13.sp)
+            } else {
+                items.forEachIndexed { index, item ->
+                    Text("${index + 1}. ${item.symbol} — ${item.formattedPriceWithUnit}", color = AppleTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 }
             }
         }

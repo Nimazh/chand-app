@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -35,16 +38,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val appThemeMode: StateFlow<String> = preferencesManager.appThemeModeFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PreferencesManager.DEFAULT_APP_THEME_MODE)
 
+    val foregroundRefreshMinutes: StateFlow<Int> = preferencesManager.foregroundRefreshMinutesFlow
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            PreferencesManager.DEFAULT_FOREGROUND_REFRESH_MINUTES
+        )
+
+    private var foregroundRefreshJob: Job? = null
+
     fun setAppThemeMode(mode: String) {
         viewModelScope.launch {
             preferencesManager.setAppThemeMode(mode)
-        }
-    }
-
-    init {
-        viewModelScope.launch {
-            repository.refreshPrices()
-            updateAllWidgets()
         }
     }
 
@@ -112,9 +117,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshPrices() {
         viewModelScope.launch {
-            repository.refreshPrices()
-            updateAllWidgets()
+            refreshPricesAndWidgets()
         }
+    }
+
+    /** Refreshes only while the app has a visible activity. Android limits background periodic work separately. */
+    fun startForegroundAutoRefresh() {
+        if (foregroundRefreshJob?.isActive == true) return
+        foregroundRefreshJob = viewModelScope.launch {
+            preferencesManager.foregroundRefreshMinutesFlow.collectLatest { minutes ->
+                while (true) {
+                    refreshPricesAndWidgets()
+                    delay(minutes * 60_000L)
+                }
+            }
+        }
+    }
+
+    fun stopForegroundAutoRefresh() {
+        foregroundRefreshJob?.cancel()
+        foregroundRefreshJob = null
+    }
+
+    fun setForegroundRefreshMinutes(minutes: Int) {
+        viewModelScope.launch { preferencesManager.setForegroundRefreshMinutes(minutes) }
     }
 
     fun toggleFavorite(item: PriceItem) {
@@ -139,6 +165,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ChandMediumWidget().updateAll(context)
             ChandLargeWidget().updateAll(context)
         } catch (_: Exception) {}
+    }
+
+    private suspend fun refreshPricesAndWidgets() {
+        val result = repository.refreshPrices()
+        if (result.isSuccess) updateAllWidgets()
     }
 
     companion object {

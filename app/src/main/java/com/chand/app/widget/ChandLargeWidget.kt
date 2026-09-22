@@ -12,6 +12,7 @@ import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -39,10 +40,16 @@ class ChandLargeWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val pref = PreferencesManager(context)
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(id)
         val allItems = pref.cachedPricesFlow.first()
         val favs = pref.favoritesFlow.first()
+        val selectedIds = pref.largeWidgetItemsFlow(appWidgetId).first()
 
-        val items = allItems.filter { it.id in favs }.ifEmpty { allItems }.take(6)
+        val items = if (selectedIds.isNotEmpty()) {
+            selectedIds.mapNotNull { selectedId -> allItems.find { it.id.equals(selectedId, ignoreCase = true) } }
+        } else {
+            allItems.filter { it.id in favs }.ifEmpty { allItems }.take(6)
+        }
 
         val themeId = pref.widgetThemeFlow.first()
         val opacity = pref.widgetOpacityFlow.first()

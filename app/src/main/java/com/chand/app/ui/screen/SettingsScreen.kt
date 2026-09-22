@@ -105,6 +105,7 @@ fun SettingsScreen(
 
     val prices by viewModel.repository.prices.collectAsState()
     val smallItemPref by prefManager.smallWidgetItemFlow().collectAsState(initial = "usd")
+    val foregroundRefreshMinutes by viewModel.foregroundRefreshMinutes.collectAsState()
     val mediumItemIds by prefManager.mediumWidgetItemsFlow.collectAsState(
         initial = PreferencesManager.DEFAULT_MEDIUM_ITEMS
     )
@@ -239,7 +240,74 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 2. App Appearance (Theme: Light / Dark / System)
+                // 2. Foreground refresh. This controls visible-app refreshes, not Android's background scheduler.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, cardShape, ambientColor = Color(0x06000000), spotColor = Color(0x0A000000))
+                        .clip(cardShape)
+                        .background(AppleCardBackground)
+                        .border(0.8.dp, AppleCardBorder, cardShape)
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Text(
+                            text = "بازهٔ دریافت قیمت هنگام بازبودن برنامه",
+                            color = AppleTextPrimary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = "ویجت‌ها بلافاصله پس از هر دریافت موفق همراه اپ به‌روزرسانی می‌شوند.",
+                            color = AppleTextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(5, 10, 15).forEach { minutes ->
+                                val isSelected = foregroundRefreshMinutes == minutes
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isSelected) AppleSegmentBg else AppleBackground)
+                                        .border(
+                                            width = if (isSelected) 1.2.dp else 0.8.dp,
+                                            color = if (isSelected) AppleBlue else AppleCardBorder,
+                                            shape = RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable {
+                                            performHaptic()
+                                            viewModel.setForegroundRefreshMinutes(minutes)
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "$minutes دقیقه",
+                                        color = if (isSelected) AppleBlue else AppleTextSecondary,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "در پس‌زمینه، Android ممکن است دریافت را دیرتر انجام دهد.",
+                            color = AppleTextTertiary,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 3. App Appearance (Theme: Light / Dark / System)
                 val appThemeMode by viewModel.appThemeMode.collectAsState()
 
                 Box(
