@@ -1,7 +1,6 @@
 package com.chand.app.worker
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.chand.app.data.local.PreferencesManager
@@ -10,6 +9,7 @@ import com.chand.app.data.repository.PriceRepository
 import com.chand.app.widget.ChandLargeWidget
 import com.chand.app.widget.ChandMediumWidget
 import com.chand.app.widget.ChandSmallWidget
+import com.chand.app.widget.ChandWidgetUpdater
 
 class PriceSyncWorker(
     private val context: Context,
@@ -26,9 +26,7 @@ class PriceSyncWorker(
             if (refreshResult.isFailure) return Result.retry()
 
             // Update all Glance widgets on the home screen
-            ChandSmallWidget().updateAll(context)
-            ChandMediumWidget().updateAll(context)
-            ChandLargeWidget().updateAll(context)
+            ChandWidgetUpdater.updateAll(context)
 
             Result.success()
         } catch (e: Exception) {

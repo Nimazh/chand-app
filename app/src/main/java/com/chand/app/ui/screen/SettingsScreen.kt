@@ -34,10 +34,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.outlined.BrightnessAuto
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -62,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.updateAll
 import com.chand.app.data.local.PreferencesManager
+import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceItem
 import com.chand.app.ui.components.LiquidGlassButton
 import com.chand.app.ui.components.LiquidGlassButtonStyle
@@ -74,7 +78,7 @@ import com.chand.app.ui.theme.AppleSegmentBg
 import com.chand.app.ui.theme.AppleTextPrimary
 import com.chand.app.ui.theme.AppleTextSecondary
 import com.chand.app.ui.theme.AppleTextTertiary
-import com.chand.app.widget.ChandLargeWidget
+import com.chand.app.widget.ChandWidgetUpdater
 import com.chand.app.widget.ChandMediumWidget
 import com.chand.app.widget.ChandSmallWidget
 import com.chand.app.widget.WidgetTheme
@@ -118,6 +122,16 @@ fun SettingsScreen(
     var selectedOpacity by remember(widgetOpacityPref) { mutableStateOf(widgetOpacityPref) }
     var selectedCornerRadius by remember(widgetCornerRadiusPref) { mutableStateOf(widgetCornerRadiusPref) }
     var isStyleSaved by remember { mutableStateOf(false) }
+    var widgetAssetQuery by remember { mutableStateOf("") }
+    var widgetAssetCategory by remember { mutableStateOf(PriceCategory.ALL) }
+    val normalizedWidgetQuery = remember(widgetAssetQuery) { widgetAssetQuery.normalizeForWidgetSearch() }
+    val filteredWidgetAssets = remember(prices, normalizedWidgetQuery, widgetAssetCategory) {
+        prices.filter { item ->
+            (widgetAssetCategory == PriceCategory.ALL || item.category == widgetAssetCategory) &&
+                (normalizedWidgetQuery.isBlank() || listOf(item.nameFa, item.effectiveNameEn, item.symbol)
+                    .any { it.normalizeForWidgetSearch().contains(normalizedWidgetQuery) })
+        }
+    }
 
 
     val cardShape = RoundedCornerShape(18.dp)
@@ -722,9 +736,7 @@ fun SettingsScreen(
                             onClick = {
                                 scope.launch {
                                     prefManager.setWidgetStyle(selectedThemeId, selectedOpacity, selectedCornerRadius)
-                                    ChandSmallWidget().updateAll(context)
-                                    ChandMediumWidget().updateAll(context)
-                                    ChandLargeWidget().updateAll(context)
+                                    ChandWidgetUpdater.updateAll(context)
                                     isStyleSaved = true
                                 }
                             },
@@ -753,6 +765,47 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                Text(
+                    text = "جست‌وجو و فیلتر دارایی‌های ویجت",
+                    color = AppleTextPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = widgetAssetQuery,
+                    onValueChange = { widgetAssetQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text("جست‌وجوی ارز، کریپتو یا طلا") },
+                    placeholder = { Text("مثلاً دلار، بیت‌کوین یا طلای ۱۸") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = AppleBlue,
+                        focusedLabelColor = AppleBlue,
+                        unfocusedBorderColor = AppleCardBorder
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(PriceCategory.ALL, PriceCategory.CURRENCY, PriceCategory.CRYPTO, PriceCategory.GOLD).forEach { category ->
+                        val isSelected = widgetAssetCategory == category
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isSelected) AppleSegmentBg else AppleBackground)
+                                .border(1.dp, if (isSelected) AppleBlue else AppleCardBorder, RoundedCornerShape(10.dp))
+                                .clickable { widgetAssetCategory = category }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(category.titleFa, color = if (isSelected) AppleBlue else AppleTextSecondary, fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
                 // 4. Choose Item for Small Widget
                 Text(
                     text = "انتخاب دارایی برای ویجت تکی (Small)",
@@ -771,7 +824,7 @@ fun SettingsScreen(
                         .border(0.8.dp, AppleCardBorder, cardShape)
                 ) {
                     Column {
-                        prices.take(8).forEachIndexed { index, item ->
+                        filteredWidgetAssets.forEachIndexed { index, item ->
                             val isSelected = item.id.equals(smallItemPref, ignoreCase = true)
                             Row(
                                 modifier = Modifier
@@ -813,7 +866,7 @@ fun SettingsScreen(
                                 }
                             }
 
-                            if (index < prices.take(8).size - 1) {
+                            if (index < filteredWidgetAssets.size - 1) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -853,7 +906,7 @@ fun SettingsScreen(
                         .border(0.8.dp, AppleCardBorder, cardShape)
                 ) {
                     Column {
-                        prices.take(8).forEachIndexed { index, item ->
+                        filteredWidgetAssets.forEachIndexed { index, item ->
                             val selectedPosition = mediumItemIds.indexOfFirst {
                                 it.equals(item.id, ignoreCase = true)
                             }
@@ -896,16 +949,46 @@ fun SettingsScreen(
                                     )
                                 }
                                 if (isSelected) {
-                                    Text(
-                                        text = "اولویت ${selectedPosition + 1}",
-                                        color = AppleBlue,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "اولویت ${selectedPosition + 1}",
+                                            color = AppleBlue,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        IconButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    prefManager.setMediumWidgetItems(
+                                                        mediumItemIds.move(selectedPosition, selectedPosition - 1)
+                                                    )
+                                                    ChandMediumWidget().updateAll(context)
+                                                }
+                                            },
+                                            enabled = selectedPosition > 0,
+                                            modifier = Modifier.size(30.dp)
+                                        ) {
+                                            Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "انتقال به بالا", tint = AppleBlue)
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                scope.launch {
+                                                    prefManager.setMediumWidgetItems(
+                                                        mediumItemIds.move(selectedPosition, selectedPosition + 1)
+                                                    )
+                                                    ChandMediumWidget().updateAll(context)
+                                                }
+                                            },
+                                            enabled = selectedPosition < mediumItemIds.lastIndex,
+                                            modifier = Modifier.size(30.dp)
+                                        ) {
+                                            Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "انتقال به پایین", tint = AppleBlue)
+                                        }
+                                    }
                                 }
                             }
 
-                            if (index < prices.take(8).size - 1) {
+                            if (index < filteredWidgetAssets.size - 1) {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                                         .height(0.6.dp).background(AppleCardBorder)
@@ -922,3 +1005,12 @@ fun SettingsScreen(
         }
     }
 }
+
+private fun List<String>.move(from: Int, to: Int): List<String> {
+    if (from !in indices || to !in indices || from == to) return this
+    return toMutableList().apply { add(to, removeAt(from)) }
+}
+
+private fun String.normalizeForWidgetSearch() = trim().lowercase()
+    .replace('ي', 'ی')
+    .replace('ك', 'ک')

@@ -1,7 +1,6 @@
 package com.chand.app.ui.screen
 
 import android.app.Application
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.chand.app.data.local.PreferencesManager
@@ -13,6 +12,7 @@ import com.chand.app.data.repository.PriceSyncStatus
 import com.chand.app.widget.ChandLargeWidget
 import com.chand.app.widget.ChandMediumWidget
 import com.chand.app.widget.ChandSmallWidget
+import com.chand.app.widget.ChandWidgetUpdater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -161,9 +161,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun updateAllWidgets() {
         try {
             val context = getApplication<Application>()
-            ChandSmallWidget().updateAll(context)
-            ChandMediumWidget().updateAll(context)
-            ChandLargeWidget().updateAll(context)
+            ChandWidgetUpdater.updateAll(context)
         } catch (_: Exception) {}
     }
 

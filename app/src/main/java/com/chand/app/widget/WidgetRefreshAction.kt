@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.updateAll
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.remote.PriceApiService
 import com.chand.app.data.repository.PriceRepository
@@ -24,9 +23,7 @@ class WidgetRefreshAction : ActionCallback {
             repo.refreshPrices()
 
             // Update all widgets
-            ChandSmallWidget().updateAll(context)
-            ChandMediumWidget().updateAll(context)
-            ChandLargeWidget().updateAll(context)
+            ChandWidgetUpdater.updateAll(context)
         }
     }
 }
