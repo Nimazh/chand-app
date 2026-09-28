@@ -24,7 +24,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 
@@ -49,6 +51,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
 
     private var foregroundRefreshJob: Job? = null
+    private var coreRefreshJob: Job? = null
 
     fun setAppThemeMode(mode: String) {
         viewModelScope.launch {
@@ -126,6 +129,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     /** Refreshes only while the app has a visible activity. Android limits background periodic work separately. */
     fun startForegroundAutoRefresh() {
+        if (coreRefreshJob?.isActive != true) {
+            coreRefreshJob = viewModelScope.launch {
+                while (isActive) {
+                    try {
+                        val outcome = repository.refreshCorePrices().getOrNull()
+                        if (outcome?.pricesChanged == true) updateAllWidgets()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        Log.w("MainViewModel", "Core price refresh failed", error)
+                    }
+                    delay(30_000L)
+                }
+            }
+        }
         if (foregroundRefreshJob?.isActive == true) return
         foregroundRefreshJob = viewModelScope.launch {
             preferencesManager.foregroundRefreshMinutesFlow.collectLatest { minutes ->
@@ -144,6 +162,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopForegroundAutoRefresh() {
+        coreRefreshJob?.cancel()
+        coreRefreshJob = null
         foregroundRefreshJob?.cancel()
         foregroundRefreshJob = null
     }

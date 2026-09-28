@@ -4,6 +4,7 @@ import android.util.Log
 import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceItem
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +14,10 @@ import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.time.Instant
 import java.util.concurrent.TimeUnit
+
+data class CorePriceQuote(val id: String, val priceTomans: Long, val fetchedAtEpochMs: Long)
 
 class PriceApiService(
     private val client: OkHttpClient = OkHttpClient.Builder()
@@ -25,6 +29,9 @@ class PriceApiService(
 ) {
     companion object {
         private const val TAG = "PriceApiService"
+        private const val CORE_PRICE_ENDPOINT = "https://chand-prices.nimazohdi06.workers.dev/api/prices"
+        private val CORE_PRICE_IDS = setOf("usd", "usdt", "gold18")
+        private const val MAX_CORE_PRICE_AGE_MS = 3 * 60_000L
         private val TGJU_ENDPOINTS = listOf(
             "https://call.tgju.org/ajax.json",
             "https://call1.tgju.org/ajax.json",
@@ -69,6 +76,41 @@ class PriceApiService(
             items.add(PriceItem("doge", "دوج‌کوین", "DOGE", PriceCategory.CRYPTO, 45370L, 1.15, 46000L, 44500L, sparklinePoints = listOf(0.192, 0.195, 0.198), priceUsd = 0.198))
 
             return items
+        }
+    }
+
+    /** Returns only a complete, recent snapshot; a partial or stale Worker response is ignored. */
+    suspend fun fetchCorePricesFromWorker(): List<CorePriceQuote> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(CORE_PRICE_ENDPOINT)
+                .cacheControl(CacheControl.FORCE_NETWORK)
+                .addHeader("Accept", "application/json")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                val body = response.body?.string() ?: return@withContext emptyList()
+                val prices = JsonParser.parseString(body).asJsonObject.getAsJsonArray("prices")
+                    ?: return@withContext emptyList()
+                val now = System.currentTimeMillis()
+                val quotes = prices.map { element ->
+                    val item = element.asJsonObject
+                    CorePriceQuote(
+                        id = item.get("id").asString.lowercase(),
+                        priceTomans = item.get("price_toman").asLong,
+                        fetchedAtEpochMs = Instant.parse(item.get("fetched_at").asString).toEpochMilli()
+                    )
+                }
+                if (quotes.map { it.id }.toSet() != CORE_PRICE_IDS || quotes.size != CORE_PRICE_IDS.size ||
+                    quotes.any { it.priceTomans <= 0 || now - it.fetchedAtEpochMs !in 0L..MAX_CORE_PRICE_AGE_MS }
+                ) return@withContext emptyList()
+                quotes
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            Log.w(TAG, "Core price Worker unavailable: ${error.javaClass.simpleName}")
+            emptyList()
         }
     }
 

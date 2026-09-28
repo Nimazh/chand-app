@@ -3,6 +3,7 @@ package com.chand.app.data.repository
 import android.util.Log
 import com.chand.app.data.local.PreferencesManager
 import com.chand.app.data.model.PriceCategory
+import com.chand.app.data.model.PriceCatalog
 import com.chand.app.data.model.PriceItem
 import com.chand.app.data.remote.PriceApiService
 import kotlinx.coroutines.CoroutineScope
@@ -89,16 +90,27 @@ class PriceRepository(
                     return@withLock Result.failure(IllegalStateException("No valid market prices received"))
                 }
 
+                val workerQuotes = apiService.fetchCorePricesFromWorker().associateBy { it.id }
+                val incomingWithCorePrices = incoming.associateBy { it.id }.toMutableMap()
+                workerQuotes.forEach { (id, quote) ->
+                    val base = incomingWithCorePrices[id] ?: cached.find { it.id == id }
+                        ?: PriceCatalog.all.first { it.id == id }
+                    incomingWithCorePrices[id] = base.copy(
+                        priceTomans = quote.priceTomans,
+                        lastUpdatedEpochMs = quote.fetchedAtEpochMs
+                    )
+                }
+
                 val currentMap = cached.associateBy { it.id }.toMutableMap()
                 val favorites = preferencesManager.favoritesFlow.first()
                 var pricesChanged = false
-                incoming.forEach { item ->
+                incomingWithCorePrices.values.forEach { item ->
                     val existing = currentMap[item.id]
                     if (existing == null || !existing.hasSameQuoteAs(item)) {
                         pricesChanged = true
                         currentMap[item.id] = item.copy(
                             sparklinePoints = mergeObservedPrices(item, existing),
-                            lastUpdatedEpochMs = now,
+                            lastUpdatedEpochMs = item.lastUpdatedEpochMs.takeIf { it > 0 } ?: now,
                             isFavorite = item.id in favorites
                         )
                     }
@@ -118,6 +130,40 @@ class PriceRepository(
                 Log.w(TAG, "Price refresh failed: ${error.javaClass.simpleName}")
                 setStatus(if (preferencesManager.cachedPricesFlow.first().isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE)
                 Result.failure(error)
+            }
+        }
+    }
+
+    /** Polls only the three centrally collected prices while the activity is visible. */
+    suspend fun refreshCorePrices(): Result<PriceRefreshOutcome> {
+        val quotes = apiService.fetchCorePricesFromWorker()
+        if (quotes.isEmpty()) return Result.failure(IllegalStateException("No recent core prices from Worker"))
+        return withContext(Dispatchers.IO) {
+            refreshMutex.withLock {
+                val cached = preferencesManager.cachedPricesFlow.first()
+                val favorites = preferencesManager.favoritesFlow.first()
+                val currentMap = cached.associateBy { it.id }.toMutableMap()
+                var changed = false
+                quotes.forEach { quote ->
+                    val base = currentMap[quote.id] ?: PriceCatalog.all.first { it.id == quote.id }
+                    if (base.priceTomans != quote.priceTomans) {
+                        val updated = base.copy(
+                            priceTomans = quote.priceTomans,
+                            lastUpdatedEpochMs = quote.fetchedAtEpochMs,
+                            isFavorite = quote.id in favorites
+                        )
+                        currentMap[quote.id] = updated.copy(
+                            sparklinePoints = mergeObservedPrices(updated, base)
+                        )
+                        changed = true
+                    }
+                }
+                val items = currentMap.values.sortedWith(compareBy<PriceItem> { it.category.ordinal }.thenBy { it.symbol })
+                if (changed) {
+                    preferencesManager.saveCachedPrices(items)
+                    _prices.value = items
+                }
+                Result.success(PriceRefreshOutcome(items, changed))
             }
         }
     }
