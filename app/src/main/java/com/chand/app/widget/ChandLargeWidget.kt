@@ -14,6 +14,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -85,6 +86,7 @@ class ChandLargeWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(bgColor)
                 .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
+                .appWidgetBackground()
                 .clickable(actionStartActivity<MainActivity>())
                 .padding(14.dp)
         ) {

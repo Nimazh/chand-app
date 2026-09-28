@@ -16,6 +16,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -39,6 +40,8 @@ import com.chand.app.data.model.PriceCatalog
 import com.chand.app.ui.MainActivity
 
 class ChandSmallWidget : GlanceAppWidget() {
+
+    private val edgeInset = 8.dp
 
     override val sizeMode: SizeMode = SizeMode.Exact
 
@@ -79,7 +82,7 @@ class ChandSmallWidget : GlanceAppWidget() {
         // Enforce strict 1:1 square aspect ratio regardless of launcher cell dimension
         val availableWidth = size.width
         val availableHeight = size.height
-        val squareSide = if (availableWidth > 30.dp && availableHeight > 30.dp) {
+        val availableSide = if (availableWidth > 30.dp && availableHeight > 30.dp) {
             minOf(availableWidth, availableHeight)
         } else if (availableWidth > 30.dp) {
             availableWidth
@@ -88,6 +91,8 @@ class ChandSmallWidget : GlanceAppWidget() {
         } else {
             150.dp
         }
+        // Leave room for launcher-specific clipping without changing the card's 1:1 aspect ratio.
+        val squareSide = (availableSide - edgeInset * 2).coerceAtLeast(1.dp)
 
         val isCompact = squareSide < 145.dp
         val cardPadding = if (isCompact) 12.dp else 16.dp
@@ -103,7 +108,7 @@ class ChandSmallWidget : GlanceAppWidget() {
 
         // Outer transparent container filling the launcher cell and centering the square card
         Box(
-            modifier = GlanceModifier.fillMaxSize(),
+            modifier = GlanceModifier.fillMaxSize().padding(edgeInset),
             contentAlignment = Alignment.Center
         ) {
             // Apple Chand Squircle Small Widget (Strict 1:1 Square)
@@ -113,6 +118,7 @@ class ChandSmallWidget : GlanceAppWidget() {
                     .height(squareSide)
                     .background(bgColor)
                     .cornerRadius(effectiveCorner)
+                    .appWidgetBackground()
                     .clickable(actionStartActivity<MainActivity>())
                     .padding(cardPadding)
             ) {
@@ -210,18 +216,27 @@ class ChandSmallWidget : GlanceAppWidget() {
 
     @androidx.compose.runtime.Composable
     private fun EmptySmallWidgetContent(widgetTheme: WidgetTheme, opacity: Int, cornerRadius: Int) {
+        val size = LocalSize.current
+        val availableSide = minOf(size.width, size.height).takeIf { it > 30.dp } ?: 150.dp
+        val squareSide = (availableSide - edgeInset * 2).coerceAtLeast(1.dp)
         Box(
-            modifier = GlanceModifier.fillMaxSize()
-                .background(widgetTheme.resolveBackgroundColor(opacity))
-                .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
-                .clickable(actionStartActivity<MainActivity>())
-                .padding(16.dp),
+            modifier = GlanceModifier.fillMaxSize().padding(edgeInset),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "برای دریافت قیمت\nبرنامه را باز کنید",
-                style = TextStyle(color = ColorProvider(widgetTheme.textColor), fontSize = 13.sp, fontWeight = FontWeight.Medium)
-            )
+            Box(
+                modifier = GlanceModifier.width(squareSide).height(squareSide)
+                    .background(widgetTheme.resolveBackgroundColor(opacity))
+                    .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
+                    .appWidgetBackground()
+                    .clickable(actionStartActivity<MainActivity>())
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "برای دریافت قیمت\nبرنامه را باز کنید",
+                    style = TextStyle(color = ColorProvider(widgetTheme.textColor), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                )
+            }
         }
     }
 }

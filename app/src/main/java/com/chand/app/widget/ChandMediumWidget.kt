@@ -14,6 +14,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -80,6 +81,7 @@ class ChandMediumWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(bgColor)
                 .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
+                .appWidgetBackground()
                 .clickable(actionStartActivity<MainActivity>())
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
@@ -184,7 +186,8 @@ class ChandMediumWidget : GlanceAppWidget() {
     private fun EmptyMediumWidgetContent(widgetTheme: WidgetTheme, opacity: Int, cornerRadius: Int) {
         Box(
             modifier = GlanceModifier.fillMaxSize().background(widgetTheme.resolveBackgroundColor(opacity))
-                .cornerRadius(cornerRadius.coerceIn(12, 28).dp).clickable(actionStartActivity<MainActivity>()).padding(16.dp),
+                .cornerRadius(cornerRadius.coerceIn(12, 28).dp).appWidgetBackground()
+                .clickable(actionStartActivity<MainActivity>()).padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
             Text("قیمتی برای نمایش نیست", style = TextStyle(color = ColorProvider(widgetTheme.textColor), fontSize = 13.sp))
