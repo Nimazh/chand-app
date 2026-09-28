@@ -1,7 +1,11 @@
 package com.chand.app.widget
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -16,12 +20,11 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -105,25 +108,29 @@ class ChandSmallWidget : GlanceAppWidget() {
         val usdFontSize = if (isCompact) 13.sp else 15.sp
 
         val effectiveCorner = cornerRadius.coerceIn(12, 28).dp
+        val cardBackground = ImageProvider(roundedCardBitmap(bgColor, effectiveCorner.value / squareSide.value))
 
         // Outer transparent container filling the launcher cell and centering the square card
         Box(
             modifier = GlanceModifier.fillMaxSize().padding(edgeInset),
             contentAlignment = Alignment.Center
         ) {
-            // Apple Chand Squircle Small Widget (Strict 1:1 Square)
+            // Draw the card shape into a bitmap. Some launchers re-clip a Glance
+            // rounded background on subsequent RemoteViews updates.
             Box(
                 modifier = GlanceModifier
                     .width(squareSide)
                     .height(squareSide)
-                    .background(bgColor)
-                    .cornerRadius(effectiveCorner)
-                    .appWidgetBackground()
                     .clickable(actionStartActivity<MainActivity>())
-                    .padding(cardPadding)
             ) {
-                Column(
+                Image(
+                    provider = cardBackground,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
                     modifier = GlanceModifier.fillMaxSize()
+                )
+                Column(
+                    modifier = GlanceModifier.fillMaxSize().padding(cardPadding)
                 ) {
                     // 1. Top Row: Circular Flag Badge (Left) & English Name/Symbol (Right)
                     Row(
@@ -219,24 +226,41 @@ class ChandSmallWidget : GlanceAppWidget() {
         val size = LocalSize.current
         val availableSide = minOf(size.width, size.height).takeIf { it > 30.dp } ?: 150.dp
         val squareSide = (availableSide - edgeInset * 2).coerceAtLeast(1.dp)
+        val effectiveCorner = cornerRadius.coerceIn(12, 28).dp
+        val cardBackground = ImageProvider(
+            roundedCardBitmap(widgetTheme.resolveBackgroundColor(opacity), effectiveCorner.value / squareSide.value)
+        )
         Box(
             modifier = GlanceModifier.fillMaxSize().padding(edgeInset),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = GlanceModifier.width(squareSide).height(squareSide)
-                    .background(widgetTheme.resolveBackgroundColor(opacity))
-                    .cornerRadius(cornerRadius.coerceIn(12, 28).dp)
-                    .appWidgetBackground()
-                    .clickable(actionStartActivity<MainActivity>())
-                    .padding(16.dp),
+                    .clickable(actionStartActivity<MainActivity>()),
                 contentAlignment = Alignment.Center
             ) {
+                Image(
+                    provider = cardBackground,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = GlanceModifier.fillMaxSize()
+                )
                 Text(
                     text = "برای دریافت قیمت\nبرنامه را باز کنید",
+                    modifier = GlanceModifier.padding(16.dp),
                     style = TextStyle(color = ColorProvider(widgetTheme.textColor), fontSize = 13.sp, fontWeight = FontWeight.Medium)
                 )
             }
         }
+    }
+
+    private fun roundedCardBitmap(color: Color, cornerFraction: Float): Bitmap {
+        // A modest fixed size avoids large RemoteViews bitmaps on every price refresh.
+        val side = 256
+        val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color.toArgb() }
+        val radius = (side * cornerFraction).coerceIn(0f, side / 2f)
+        Canvas(bitmap).drawRoundRect(0f, 0f, side.toFloat(), side.toFloat(), radius, radius, paint)
+        return bitmap
     }
 }
