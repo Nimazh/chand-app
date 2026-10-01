@@ -65,6 +65,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -94,6 +95,8 @@ import com.chand.app.widget.WidgetTheme
 import com.chand.app.widget.WidgetConfigActivity
 import kotlinx.coroutines.launch
 
+private const val PRIVACY_POLICY_URL = "https://gist.github.com/Nimazh/8918bb93255c5513fe9429c9a99bcb3e"
+
 @Composable
 fun SettingsScreen(
     viewModel: MainViewModel,
@@ -101,6 +104,7 @@ fun SettingsScreen(
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val prefManager = remember { PreferencesManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -425,6 +429,13 @@ fun SettingsScreen(
                             color = AppleTextTertiary,
                             fontSize = 11.sp,
                             lineHeight = 17.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "سیاست حریم خصوصی",
+                            color = AppleBlue,
+                            fontSize = 12.sp,
+                            modifier = Modifier.clickable { uriHandler.openUri(PRIVACY_POLICY_URL) }
                         )
                         if (diagnosticsChangeFailed) {
                             Spacer(modifier = Modifier.height(6.dp))
