@@ -3,6 +3,7 @@ package com.chand.app.ui.screen
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.os.Build
 import android.view.HapticFeedbackConstants
@@ -48,6 +49,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chand.app.data.local.PreferencesManager
+import com.chand.app.diagnostics.DiagnosticsReporter
 import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceCatalog
 import com.chand.app.data.model.PriceItem
@@ -127,6 +130,9 @@ fun SettingsScreen(
     val smallItemFlow = remember(editedSmallWidgetId) { prefManager.smallWidgetItemFlow(editedSmallWidgetId) }
     val smallItemPref by smallItemFlow.collectAsState(initial = "usd")
     val foregroundRefreshMinutes by viewModel.foregroundRefreshMinutes.collectAsState()
+    val diagnosticsConsent by prefManager.diagnosticsConsentFlow.collectAsState(initial = false)
+    var diagnosticsChangePending by remember { mutableStateOf(false) }
+    var diagnosticsChangeFailed by remember { mutableStateOf(false) }
     val mediumItemsFlow = remember(editedMediumWidgetId) { prefManager.mediumWidgetItemsFlow(editedMediumWidgetId) }
     val mediumItemIds by mediumItemsFlow.collectAsState(
         initial = PreferencesManager.DEFAULT_MEDIUM_ITEMS
@@ -354,6 +360,96 @@ fun SettingsScreen(
                             color = AppleTextTertiary,
                             fontSize = 11.sp
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Crash and widget diagnostics are opt-in and off by default.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, cardShape, ambientColor = Color(0x06000000), spotColor = Color(0x0A000000))
+                        .clip(cardShape)
+                        .background(AppleCardBackground)
+                        .border(0.8.dp, AppleCardBorder, cardShape)
+                        .padding(16.dp)
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "گزارش خودکار خطاها",
+                                    color = AppleTextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "فقط با رضایت شما؛ پیش‌فرض خاموش",
+                                    color = AppleTextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Switch(
+                                checked = diagnosticsConsent,
+                                enabled = !diagnosticsChangePending,
+                                onCheckedChange = { enabled ->
+                                    diagnosticsChangePending = true
+                                    diagnosticsChangeFailed = false
+                                    scope.launch {
+                                        try {
+                                            prefManager.setDiagnosticsConsent(enabled)
+                                        } catch (_: Exception) {
+                                            diagnosticsChangeFailed = true
+                                        } finally {
+                                            diagnosticsChangePending = false
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "در صورت فعال‌سازی، گزارش کرش، هنگ و خطاهای دریافت قیمت یا ویجت همراه نسخهٔ اپ، مشخصات فنی دستگاه و کد خطا به Google Firebase ارسال می‌شود. در گزارش‌های اختصاصی، متن درخواست‌ها، توکن و اطلاعات تماس را عمداً اضافه نمی‌کنیم.",
+                            color = AppleTextSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 19.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "در نصب‌های قبلی ممکن است گزارش‌های ذخیره‌شدهٔ محلی هنگام روشن‌کردن این گزینه ارسال شوند. گزارش‌های ارسال‌شده قابل بازگرداندن نیستند؛ خاموش‌کردن جمع‌آوری از اجرای بعدی اپ کامل می‌شود.",
+                            color = AppleTextTertiary,
+                            fontSize = 11.sp,
+                            lineHeight = 17.sp
+                        )
+                        if (diagnosticsChangeFailed) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "تغییر تنظیم گزارش خطا انجام نشد؛ دوباره تلاش کنید.",
+                                color = Color(0xFFD84040),
+                                fontSize = 12.sp
+                            )
+                        }
+                        if (diagnosticsConsent &&
+                            (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                        ) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "ارسال گزارش آزمایشی",
+                                color = AppleBlue,
+                                fontSize = 12.sp,
+                                modifier = Modifier.clickable {
+                                    DiagnosticsReporter.nonFatal(
+                                        DiagnosticsReporter.Event.TEST_REPORT,
+                                        IllegalStateException("diagnostic_test_report")
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
 

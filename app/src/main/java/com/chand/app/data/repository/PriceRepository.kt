@@ -6,6 +6,7 @@ import com.chand.app.data.model.PriceCategory
 import com.chand.app.data.model.PriceCatalog
 import com.chand.app.data.model.PriceItem
 import com.chand.app.data.remote.PriceApiService
+import com.chand.app.diagnostics.DiagnosticsReporter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +88,10 @@ class PriceRepository(
                 val incoming = tgjuItems + fallbackCrypto
                 if (incoming.isEmpty()) {
                     setStatus(if (cached.isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE)
+                    DiagnosticsReporter.nonFatal(
+                        DiagnosticsReporter.Event.PRICE_REFRESH_FAILED,
+                        IllegalStateException("No valid market prices")
+                    )
                     return@withLock Result.failure(IllegalStateException("No valid market prices received"))
                 }
 
@@ -128,6 +133,7 @@ class PriceRepository(
                 throw cancelled
             } catch (error: Exception) {
                 Log.w(TAG, "Price refresh failed: ${error.javaClass.simpleName}")
+                DiagnosticsReporter.nonFatal(DiagnosticsReporter.Event.PRICE_REFRESH_FAILED, error)
                 setStatus(if (preferencesManager.cachedPricesFlow.first().isEmpty()) PriceSyncStatus.ERROR else PriceSyncStatus.STALE)
                 Result.failure(error)
             }
@@ -137,7 +143,13 @@ class PriceRepository(
     /** Polls only the three centrally collected prices while the activity is visible. */
     suspend fun refreshCorePrices(): Result<PriceRefreshOutcome> {
         val quotes = apiService.fetchCorePricesFromWorker()
-        if (quotes.isEmpty()) return Result.failure(IllegalStateException("No recent core prices from Worker"))
+        if (quotes.isEmpty()) {
+            DiagnosticsReporter.nonFatal(
+                DiagnosticsReporter.Event.CORE_PRICE_REFRESH_FAILED,
+                IllegalStateException("No recent core prices")
+            )
+            return Result.failure(IllegalStateException("No recent core prices from Worker"))
+        }
         return withContext(Dispatchers.IO) {
             refreshMutex.withLock {
                 val cached = preferencesManager.cachedPricesFlow.first()

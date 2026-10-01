@@ -1,7 +1,17 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
+
+val releaseStorePath = providers.environmentVariable("CHAND_KEYSTORE_PATH").orNull
+val releaseStorePassword = providers.environmentVariable("CHAND_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("CHAND_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("CHAND_KEY_PASSWORD").orNull
+val releaseSigningReady = listOf(
+    releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "com.chand.app"
@@ -20,8 +30,19 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseSigningReady) {
+            create("localRelease") {
+                storeFile = file(requireNotNull(releaseStorePath))
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseSigningReady) signingConfig = signingConfigs.getByName("localRelease")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -80,6 +101,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
 
     // AndroidLiquidGlass (Backdrop by Kyant0)
     implementation(project(":backdrop"))

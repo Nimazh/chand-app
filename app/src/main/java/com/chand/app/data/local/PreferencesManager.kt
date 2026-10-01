@@ -2,6 +2,7 @@ package com.chand.app.data.local
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -43,6 +44,7 @@ class PreferencesManager(private val context: Context) {
         private val KEY_WIDGET_THEME = stringPreferencesKey("widget_theme")
         private val KEY_WIDGET_OPACITY = intPreferencesKey("widget_opacity")
         private val KEY_WIDGET_CORNER_RADIUS = intPreferencesKey("widget_corner_radius")
+        private val KEY_DIAGNOSTICS_CONSENT = booleanPreferencesKey("diagnostics_consent")
 
         val DEFAULT_FAVORITES = setOf("usd", "gold18", "emami", "usdt", "btc")
         val DEFAULT_MEDIUM_ITEMS = listOf("usd", "gold18", "emami", "usdt")
@@ -87,6 +89,7 @@ class PreferencesManager(private val context: Context) {
     }
     val appThemeModeFlow: Flow<String> = context.dataStore.data.map { it[KEY_APP_THEME_MODE] ?: DEFAULT_APP_THEME_MODE }
     val lastUpdateTimeFlow: Flow<Long> = context.dataStore.data.map { it[KEY_LAST_UPDATE_TIME] ?: 0L }
+    val diagnosticsConsentFlow: Flow<Boolean> = context.dataStore.data.map { it[KEY_DIAGNOSTICS_CONSENT] ?: false }
 
     val cachedPricesFlow: Flow<List<PriceItem>> = context.dataStore.data
         .map { prefs -> prefs[KEY_CACHED_PRICES_JSON] }
@@ -177,6 +180,18 @@ class PreferencesManager(private val context: Context) {
     suspend fun setForegroundRefreshMinutes(minutes: Int) {
         require(minutes in ALLOWED_FOREGROUND_REFRESH_MINUTES) { "Invalid refresh interval" }
         context.dataStore.edit { it[KEY_FOREGROUND_REFRESH_MINUTES] = minutes }
+    }
+
+    suspend fun setDiagnosticsConsent(enabled: Boolean) {
+        check(com.chand.app.diagnostics.DiagnosticsReporter.applyConsent(context, enabled)) {
+            "Crash reporting preference could not be applied"
+        }
+        try {
+            context.dataStore.edit { it[KEY_DIAGNOSTICS_CONSENT] = enabled }
+        } catch (error: Exception) {
+            com.chand.app.diagnostics.DiagnosticsReporter.applyConsent(context, !enabled)
+            throw error
+        }
     }
 
     private fun parseAssetIds(value: String?, maxItems: Int): List<String> =

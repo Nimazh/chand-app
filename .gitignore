@@ -26,6 +26,8 @@ next-app/.next/
 *.pem
 *.key
 keystore.properties
+local-signing/
+app/google-services.json
 
 # Runtime and operating-system files
 *.log

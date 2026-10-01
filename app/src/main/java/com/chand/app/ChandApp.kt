@@ -7,12 +7,26 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.chand.app.worker.PriceSyncWorker
+import com.chand.app.data.local.PreferencesManager
+import com.chand.app.diagnostics.DiagnosticsReporter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 class ChandApp : Application() {
 
+    private val diagnosticsScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
+        diagnosticsScope.launch {
+            PreferencesManager(this@ChandApp).diagnosticsConsentFlow.collect { enabled ->
+                DiagnosticsReporter.applyConsent(this@ChandApp, enabled)
+            }
+        }
         setupBackgroundSync()
     }
 
