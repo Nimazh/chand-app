@@ -15,6 +15,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
       - name: Prepare Firebase configuration
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
@@ -24,4 +26,4 @@ jobs:
             exit 1
           fi
           printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
-      - run: ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
+      - run: gradle testDebugUnitTest lintDebug assembleDebug assembleRelease
