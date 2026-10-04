@@ -14,7 +14,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 data class CorePriceQuote(val id: String, val priceTomans: Long, val fetchedAtEpochMs: Long)
@@ -98,7 +97,7 @@ class PriceApiService(
                     CorePriceQuote(
                         id = item.get("id").asString.lowercase(),
                         priceTomans = item.get("price_toman").asLong,
-                        fetchedAtEpochMs = Instant.parse(item.get("fetched_at").asString).toEpochMilli()
+                        fetchedAtEpochMs = parseWorkerTimestamp(item.get("fetched_at").asString)
                     )
                 }
                 if (quotes.map { it.id }.toSet() != CORE_PRICE_IDS || quotes.size != CORE_PRICE_IDS.size ||
